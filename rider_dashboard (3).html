@@ -1,0 +1,199 @@
+
+<style>
+.rs{box-sizing:border-box}
+.rs *{box-sizing:border-box;margin:0;padding:0}
+.rs{
+  --bg:#f5f5f0;--surface:#fff;--card:#fafaf8;--border:#e8e8e2;--border2:#d4d4cc;
+  --text:#1a1a1a;--text2:#5a5a5a;--text3:#9a9a9a;
+  --accent:#e8501a;--accent2:#ff6b35;--abg:rgba(232,80,26,0.08);--aborder:rgba(232,80,26,0.3);
+  --green:#16a34a;--gbg:rgba(22,163,74,0.09);--gborder:rgba(22,163,74,0.3);
+  --blue:#2563eb;--bbg:rgba(37,99,235,0.09);--bborder:rgba(37,99,235,0.3);
+  --amber:#b45309;--ambg:rgba(180,83,9,0.09);--amborder:rgba(180,83,9,0.3);
+  --red:#dc2626;--rbg:rgba(220,38,38,0.09);--rborder:rgba(220,38,38,0.3);
+  --radius:9px;
+  background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;border-radius:14px;padding:16px;position:relative
+}
+.rs.dark{
+  --bg:#0f0f0f;--surface:#1a1a1a;--card:#222;--border:#2e2e2e;--border2:#3a3a3a;
+  --text:#f0f0f0;--text2:#aaa;--text3:#555;
+  --accent:#ff6b35;--accent2:#ff8c55;--abg:rgba(255,107,53,0.12);--aborder:rgba(255,107,53,0.35);
+  --green:#22c55e;--gbg:rgba(34,197,94,0.1);--gborder:rgba(34,197,94,0.3);
+  --blue:#3b82f6;--bbg:rgba(59,130,246,0.1);--bborder:rgba(59,130,246,0.3);
+  --amber:#f59e0b;--ambg:rgba(245,158,11,0.1);--amborder:rgba(245,158,11,0.3);
+  --red:#ef4444;--rbg:rgba(239,68,68,0.1);--rborder:rgba(239,68,68,0.3);
+}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.rs-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.rs-logo{font-size:16px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px}
+.rs-logo span{color:var(--text);font-weight:400;font-size:12px}
+.rs-actions{display:flex;gap:8px}
+.tb-btn{background:none;border:1px solid var(--border2);color:var(--text2);padding:6px 11px;border-radius:var(--radius);cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.status-pick{display:flex;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px}
+.status-pick button{border:none;background:none;padding:5px 11px;border-radius:16px;font-size:12px;font-weight:600;color:var(--text3);cursor:pointer}
+.status-pick button.on.avail{background:var(--gbg);color:var(--green)}
+.status-pick button.on.busy{background:var(--ambg);color:var(--amber)}
+.status-pick button.on.off{background:var(--card);color:var(--text3)}
+.profile-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.rs-avatar{width:46px;height:46px;border-radius:50%;background:var(--bbg);border:2px solid var(--bborder);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:var(--blue);flex-shrink:0}
+.rs-name{font-size:15px;font-weight:700}
+.rs-phone{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;margin-top:2px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px}
+.stat-label{font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.stat-val{font-size:22px;font-weight:700;color:var(--accent)}
+.section-head{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+.active-card{background:var(--surface);border:1px solid var(--aborder);border-radius:12px;padding:16px;margin-bottom:20px}
+.ac-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.ac-id{font-weight:700;color:var(--accent);font-size:13px}
+.ac-cust{font-size:15px;font-weight:700;margin-top:2px}
+.ac-row{display:flex;gap:8px;font-size:12.5px;color:var(--text2);margin-bottom:6px;align-items:flex-start}
+.ac-row i{font-size:14px;margin-top:1px;color:var(--text3);flex-shrink:0}
+.ac-amt{font-size:18px;font-weight:700}
+.stage-bar{display:flex;gap:4px;margin:12px 0}
+.stage-seg{flex:1;height:4px;border-radius:3px;background:var(--border)}
+.stage-seg.done{background:var(--accent)}
+.ac-actions{display:flex;gap:8px;margin-top:12px}
+.btn-primary{background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600;flex:1}
+.btn-secondary{background:none;border:1px solid var(--border2);color:var(--text2);padding:9px 16px;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600}
+.empty-card{background:var(--card);border:1px dashed var(--border2);border-radius:12px;padding:28px 16px;text-align:center;color:var(--text3);font-size:13px;margin-bottom:20px}
+.empty-card i{font-size:26px;display:block;margin-bottom:8px;color:var(--text3)}
+.deliv-table{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.dt-row{display:grid;grid-template-columns:90px 1fr 70px 70px;gap:0;padding:11px 14px;border-bottom:1px solid var(--border);align-items:center}
+.dt-row:last-child{border-bottom:none}
+.dt-head{background:var(--card);font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.dt-cell{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.s-delivered{background:var(--gbg);color:var(--green);border:1px solid var(--gborder)}
+.modal-bg{position:relative;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;min-height:300px;border-radius:12px;margin-top:14px}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:320px;text-align:center}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.modal p{font-size:12px;color:var(--text2);margin-bottom:16px}
+.otp-input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:12px;border-radius:var(--radius);font-size:22px;letter-spacing:8px;text-align:center;outline:none;margin-bottom:14px;font-weight:700}
+.otp-input:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;justify-content:center}
+.toast{position:absolute;top:10px;right:10px;background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:9px 16px;border-radius:30px;font-size:12.5px;font-weight:500;z-index:9;opacity:0;transform:translateY(-8px);transition:all 0.25s;display:flex;align-items:center;gap:7px;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast i{color:var(--green)}
+</style>
+<div class="rs" id="rs-root">
+<h2 class="sr-only">ZapFood rider dashboard for Arjun Patel showing active delivery, OTP verification and delivery history</h2>
+<div class="toast" id="toast"><i class="ti ti-circle-check"></i><span id="tmsg"></span></div>
+
+<div class="rs-top">
+  <div class="rs-logo"><i class="ti ti-bolt" style="font-size:18px"></i> ZapFood <span>Rider</span></div>
+  <div class="rs-actions">
+    <div class="status-pick" id="status-pick">
+      <button onclick="setStatus('available')" data-s="available">Available</button>
+      <button onclick="setStatus('busy')" data-s="busy">Busy</button>
+      <button onclick="setStatus('offline')" data-s="offline">Offline</button>
+    </div>
+    <button class="tb-btn" onclick="toggleTheme()"><i class="ti ti-moon" id="theme-icon"></i></button>
+  </div>
+</div>
+
+<div class="profile-card">
+  <div class="rs-avatar" id="rider-avatar">—</div>
+  <div>
+    <div class="rs-name" id="rider-name">Rider</div>
+    <div class="rs-phone" id="rider-phone"><i class="ti ti-phone" style="font-size:12px"></i>—</div>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="stat-label">Today's deliveries</div><div class="stat-val" id="stat-today-del">0</div></div>
+  <div class="stat-card"><div class="stat-label">Today's earnings</div><div class="stat-val" id="stat-today-earn">₹0</div></div>
+  <div class="stat-card"><div class="stat-label">Total deliveries</div><div class="stat-val" id="stat-total-del">0</div></div>
+  <div class="stat-card"><div class="stat-label">Rating</div><div class="stat-val" id="stat-rating">—</div></div>
+</div>
+
+<div class="section-head">Active delivery</div>
+<div id="active-zone"></div>
+
+<div class="section-head">Delivery history</div>
+<div class="deliv-table">
+  <div class="dt-row dt-head"><div>Order</div><div>Customer</div><div>Amount</div><div>Status</div></div>
+  <div id="history-body"></div>
+</div>
+
+<div class="modal-bg" id="otp-modal">
+  <div class="modal">
+    <h3>Verify delivery OTP</h3>
+    <p id="otp-sub">Ask the customer for their 4-digit OTP</p>
+    <input type="text" class="otp-input" id="otp-field" maxlength="4" inputmode="numeric" placeholder="0000">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeOtp()">Cancel</button>
+      <button class="btn-primary" style="flex:none" onclick="verifyOtp()">Confirm delivery</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+let isDark=false;
+let order=null;
+let history=[];
+let myStatus='offline';
+let tTimer;
+
+function toast(msg){clearTimeout(tTimer);document.getElementById('tmsg').textContent=msg;document.getElementById('toast').classList.add('show');tTimer=setTimeout(()=>document.getElementById('toast').classList.remove('show'),2400);}
+function toggleTheme(){isDark=!isDark;document.getElementById('rs-root').classList.toggle('dark',isDark);document.getElementById('theme-icon').className=isDark?'ti ti-sun':'ti ti-moon';}
+function setStatus(s){myStatus=s;document.querySelectorAll('#status-pick button').forEach(b=>{b.classList.remove('on','avail','busy','off');if(b.dataset.s===s){b.classList.add('on',s==='available'?'avail':s==='busy'?'busy':'off');}});toast('Status set to '+s);}
+
+function stageIndex(s){return {assigned:0,otw:1,delivered:2}[s];}
+function renderActive(){
+  const zone=document.getElementById('active-zone');
+  if(!order||order.stage==='delivered'){
+    zone.innerHTML='<div class="empty-card"><i class="ti ti-moped"></i>No active delivery right now.<br>Waiting for the next order assignment.</div>';
+    return;
+  }
+  const idx=stageIndex(order.stage);
+  const segs=[0,1,2].map(i=>`<div class="stage-seg ${i<=idx?'done':''}"></div>`).join('');
+  let actionsHtml='';
+  if(order.stage==='assigned'){
+    actionsHtml=`<button class="btn-primary" onclick="startDelivery()"><i class="ti ti-moped" style="margin-right:6px"></i>Start delivery</button>`;
+  } else if(order.stage==='otw'){
+    actionsHtml=`<button class="btn-primary" onclick="openOtp()"><i class="ti ti-lock" style="margin-right:6px"></i>Verify OTP & complete</button>`;
+  }
+  zone.innerHTML=`
+    <div class="active-card">
+      <div class="ac-head">
+        <div><div class="ac-id">${order.id}</div><div class="ac-cust">${order.customer}</div></div>
+        <div class="ac-amt">₹${order.amount}</div>
+      </div>
+      <div class="ac-row"><i class="ti ti-package"></i>${order.items}</div>
+      <div class="ac-row"><i class="ti ti-map-pin"></i>${order.address}</div>
+      <div class="ac-row"><i class="ti ti-phone"></i>${order.phone}</div>
+      <div class="stage-bar">${segs}</div>
+      <div class="ac-actions">${actionsHtml}</div>
+    </div>`;
+}
+function startDelivery(){order.stage='otw';renderActive();toast('Pickup confirmed — heading to customer');}
+function openOtp(){document.getElementById('otp-modal').classList.add('show');document.getElementById('otp-field').value='';document.getElementById('otp-field').focus();}
+function closeOtp(){document.getElementById('otp-modal').classList.remove('show');}
+function verifyOtp(){
+  const val=document.getElementById('otp-field').value.trim();
+  if(val.length!==4){toast('Enter the 4-digit OTP');return;}
+  if(val!==order.otp){toast('Incorrect OTP — ask the customer again');return;}
+  order.stage='delivered';
+  history.unshift({id:order.id,customer:order.customer,amount:order.amount,status:'delivered'});
+  closeOtp();
+  renderActive();
+  renderHistory();
+  toast('Delivery confirmed!');
+  setTimeout(()=>{order=null;renderActive();},900);
+}
+function renderHistory(){
+  document.getElementById('history-body').innerHTML=history.map(h=>`
+    <div class="dt-row">
+      <div class="dt-cell" style="font-weight:700;color:var(--accent);font-size:12px">${h.id}</div>
+      <div class="dt-cell">${h.customer}</div>
+      <div class="dt-cell">₹${h.amount}</div>
+      <div class="dt-cell"><span class="status-badge s-delivered"><i class="ti ti-check" style="font-size:10px"></i>Delivered</span></div>
+    </div>`).join('');
+}
+setStatus('offline');
+renderActive();
+renderHistory();
+</script>
