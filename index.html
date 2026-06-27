@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -224,24 +223,39 @@
     <div class="auth-card">
       <h2 id="auth-title">Create account 🚀</h2>
       <p id="auth-sub">Join ZapFood – your favourite food, delivered fast</p>
-      <button class="social-btn"><i class="ti ti-brand-google" style="color:#ea4335"></i> Continue with Google</button>
-      <div class="divider">or continue with email</div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" placeholder="you@example.com" id="auth-email">
+
+      <!-- Sign Up fields (shown when authMode=signup) -->
+      <div id="signup-fields">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" placeholder="you@example.com" id="auth-email">
+        </div>
+        <div class="form-group">
+          <label>Password <span style="font-size:11px;color:var(--text3)">(min. 6 characters)</span></label>
+          <input type="password" placeholder="••••••••" id="auth-pass">
+        </div>
+        <div id="auth-name-group" class="form-group">
+          <label>Full name</label>
+          <input type="text" placeholder="Rahul Sharma" id="auth-name">
+        </div>
+        <div id="auth-phone-group" class="form-group">
+          <label>Phone number</label>
+          <input type="tel" placeholder="+91 98765 43210" id="auth-phone">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" placeholder="Min. 6 characters" id="auth-pass">
+
+      <!-- Sign In fields (shown when authMode=login) -->
+      <div id="login-fields" style="display:none">
+        <div class="form-group">
+          <label>Email or Mobile number</label>
+          <input type="text" placeholder="you@example.com or 98765 43210" id="login-identifier">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" placeholder="••••••••" id="login-pass" onkeydown="if(event.key==='Enter')handleAuth()">
+        </div>
       </div>
-      <div id="auth-name-group" class="form-group">
-        <label>Full name</label>
-        <input type="text" placeholder="Rahul Sharma" id="auth-name">
-      </div>
-      <div id="auth-phone-group" class="form-group">
-        <label>Phone number</label>
-        <input type="tel" placeholder="+91 98765 43210" id="auth-phone">
-      </div>
+
       <button class="auth-submit" onclick="handleAuth()" id="auth-submit-btn">Create account</button>
       <div class="auth-switch" id="auth-switch">Already have an account? <a onclick="toggleAuth()">Sign in</a></div>
     </div>
@@ -601,13 +615,13 @@ function setActive(btn){
 
 function toggleAuth(){
   authMode = authMode==='login'?'signup':'login';
-  document.getElementById('auth-title').textContent = authMode==='login'?'Welcome back 👋':'Create account 🚀';
-  document.getElementById('auth-sub').textContent = authMode==='login'?'Sign in to track orders & save favourites':'Join ZapFood – your favourite food, delivered fast';
-  document.getElementById('auth-submit-btn').textContent = authMode==='login'?'Sign in':'Create account';
-  document.getElementById('auth-switch').innerHTML = authMode==='login'?`Don't have an account? <a onclick="toggleAuth()">Sign up</a>`:`Already have an account? <a onclick="toggleAuth()">Sign in</a>`;
-  document.getElementById('auth-name-group').style.display = authMode==='signup'?'block':'none';
-  document.getElementById('auth-phone-group').style.display = authMode==='signup'?'block':'none';
-  document.getElementById('auth-pass').placeholder = authMode==='signup'?'Min. 6 characters':'••••••••';
+  const isLogin = authMode==='login';
+  document.getElementById('auth-title').textContent = isLogin?'Welcome back 👋':'Create account 🚀';
+  document.getElementById('auth-sub').textContent   = isLogin?'Sign in to track orders & save favourites':'Join ZapFood – your favourite food, delivered fast';
+  document.getElementById('auth-submit-btn').textContent = isLogin?'Sign in':'Create account';
+  document.getElementById('auth-switch').innerHTML  = isLogin?`Don't have an account? <a onclick="toggleAuth()">Sign up</a>`:`Already have an account? <a onclick="toggleAuth()">Sign in</a>`;
+  document.getElementById('signup-fields').style.display = isLogin?'none':'block';
+  document.getElementById('login-fields').style.display  = isLogin?'block':'none';
 }
 
 // ── Account store ─────────────────────────────────────────────
@@ -615,39 +629,41 @@ function getAccounts(){ try{ return JSON.parse(localStorage.getItem('zapfood_acc
 function saveAccounts(a){ localStorage.setItem('zapfood_accounts', JSON.stringify(a)); }
 
 function handleAuth(){
-  const email = document.getElementById('auth-email').value.trim().toLowerCase();
-  const pass  = document.getElementById('auth-pass').value;
-  const name  = document.getElementById('auth-name').value.trim();
-  const phone = document.getElementById('auth-phone') ? document.getElementById('auth-phone').value.trim() : '';
-
-  // Basic validation
-  if(!email){ showToast('Please enter your email'); return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Please enter a valid email address'); return; }
-  if(!pass || pass.length < 6){ showToast('Password must be at least 6 characters'); return; }
-
   const accounts = getAccounts();
 
   if(authMode === 'signup'){
+    const email = document.getElementById('auth-email').value.trim().toLowerCase();
+    const pass  = document.getElementById('auth-pass').value;
+    const name  = document.getElementById('auth-name').value.trim();
+    const phone = document.getElementById('auth-phone').value.trim();
+    if(!email){ showToast('Please enter your email'); return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Please enter a valid email address'); return; }
+    if(!pass || pass.length < 6){ showToast('Password must be at least 6 characters'); return; }
     if(!name){ showToast('Please enter your full name'); return; }
-    if(accounts[email]){ showToast('An account with this email already exists. Please sign in.'); return; }
-    // Create account
+    if(accounts[email]){ showToast('Account already exists. Please sign in.'); return; }
     accounts[email] = { name, email, phone, password: pass };
     saveAccounts(accounts);
     showToast('Account created! Please sign in now.');
-    // Switch to login
-    setTimeout(()=>{
-      toggleAuth(); // switch to login mode
-      document.getElementById('auth-email').value = email;
-    }, 800);
+    setTimeout(()=>{ toggleAuth(); document.getElementById('login-identifier').value = email; }, 800);
     return;
   }
 
-  // LOGIN
-  if(!accounts[email]){ showToast('No account found. Please sign up first.'); return; }
-  if(accounts[email].password !== pass){ showToast('Incorrect password. Please try again.'); return; }
+  // LOGIN — supports email or mobile number
+  const identifier = document.getElementById('login-identifier').value.trim().toLowerCase();
+  const pass       = document.getElementById('login-pass').value;
+  if(!identifier){ showToast('Please enter your email or mobile number'); return; }
+  if(!pass){ showToast('Please enter your password'); return; }
+
+  // Find account by email or by phone
+  let acc = accounts[identifier]; // try email match first
+  if(!acc){
+    // try phone match
+    acc = Object.values(accounts).find(a => a.phone && a.phone.replace(/\s/g,'') === identifier.replace(/\s/g,''));
+  }
+  if(!acc){ showToast('No account found with that email or mobile number.'); return; }
+  if(acc.password !== pass){ showToast('Incorrect password. Please try again.'); document.getElementById('login-pass').value=''; return; }
 
   // Success
-  const acc = accounts[email];
   isLoggedIn = true;
   loggedInUser = { name: acc.name, email: acc.email };
   document.getElementById('auth-nav-label').textContent = acc.name.split(' ')[0];
@@ -678,6 +694,8 @@ function signOut(){
   document.getElementById('auth-nav-btn').querySelector('i').className = 'ti ti-user';
   document.getElementById('auth-email').value='';
   document.getElementById('auth-pass').value='';
+  document.getElementById('login-identifier').value='';
+  document.getElementById('login-pass').value='';
   showToast('Signed out successfully');
   showView('auth');
   setActive(document.querySelectorAll('.bottom-nav-item')[0]);
