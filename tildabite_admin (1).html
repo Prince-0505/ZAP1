@@ -323,7 +323,7 @@ function recomputeRiderOrderCounts(){
 
 function adminRefreshOrders(){
   const raw = loadOrdersFromStore();
-  ORDERS = raw.map(o=>({id:o.id,customer:o.customer,time:o.time||'—',amount:o.total,status:o.status,rider:o.rider||null,rider_id:o.rider_id||null}));
+  ORDERS = raw.map(o=>({id:o.id,customer:o.customer,time:o.time||'—',amount:o.total,status:o.status,rider:o.rider||null,rider_id:o.rider_id||null,otp:o.otp||null,address:o.address||'—',items:o.items||[]}));
   recomputeRiderOrderCounts();
   renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders();
 }
@@ -350,7 +350,7 @@ function confirmAssign(){
   if(!sel.value){toast('Select a rider first');return;}
   const riderId=sel.value; const riderName=sel.options[sel.selectedIndex].text.split(' (')[0];
   const all=loadOrdersFromStore(); const idx=all.findIndex(x=>x.id===assigningOrder);
-  if(idx>-1){all[idx].status='otw';all[idx].rider=riderName;all[idx].rider_id=riderId;}
+  const assignOtp=String(Math.floor(1000+Math.random()*9000));if(idx>-1){all[idx].status='otw';all[idx].rider=riderName;all[idx].rider_id=riderId;if(!all[idx].otp)all[idx].otp=assignOtp;}
   saveOrdersToStore(all);
   const o=ORDERS.find(x=>x.id===assigningOrder); if(o){o.status='otw';o.rider=riderName;o.rider_id=riderId;}
   recomputeRiderOrderCounts();
