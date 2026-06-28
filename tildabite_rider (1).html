@@ -207,6 +207,7 @@ function riderLogin(){
   currentRiderId = cred.id;
   document.getElementById('rider-login-screen').style.display='none';
   document.getElementById('rider-main').style.display='block';
+  if(pollInterval)clearInterval(pollInterval);pollInterval=setInterval(loadRiderData,5000);
   document.getElementById('rider-avatar').textContent=cred.initials;
   document.getElementById('rider-name').textContent=cred.name;
   document.getElementById('rider-phone').innerHTML='<i class="ti ti-phone" style="font-size:12px"></i>'+cred.phone;
@@ -218,6 +219,7 @@ function riderLogin(){
 function riderSignOut(){
   if(pollInterval){ clearInterval(pollInterval); pollInterval=null; }
   currentRiderId=null; activeOrders=[]; deliveredHistory=[];
+  if(pollInterval){clearInterval(pollInterval);pollInterval=null;}
   document.getElementById('rider-main').style.display='none';
   document.getElementById('rider-login-screen').style.display='flex';
   document.getElementById('rider-id-input').value='';
