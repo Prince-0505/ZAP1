@@ -1051,51 +1051,51 @@ async function placeOrder(){
   const otp = String(Math.floor(1000 + Math.random() * 9000));
   const sbItems = keys.map(k=>{ const i=MENU.find(m=>m.id==k); return {id:i.id, name:i.name, qty:cart[k], price:i.price}; });
 
-  // ── Save to Supabase (works across all devices) ──
-  try {
-    const { data: { user } } = await sb.auth.getUser();
-    const insertPayload = {
-      delivery_address: address,
-      items: sbItems,
-      subtotal: sub,
-      tax: tax,
-      total: sub + tax,
-      payment_method: 'cod',
-      delivery_otp: otp,
-      status: 'pending',
-      customer_name: loggedInUser.name || 'Customer',
-      customer_phone: loggedInUser.phone || '—'
-    };
-    if(user) insertPayload.user_id = user.id;
+  // ── Save to Supabase ──
+  // NOTE: user_id is intentionally omitted — no FK constraint issues
+  const insertPayload = {
+    delivery_address: address,
+    items: sbItems,
+    subtotal: sub,
+    tax: tax,
+    total: sub + tax,
+    payment_method: 'cod',
+    delivery_otp: otp,
+    status: 'pending',
+    customer_name: (loggedInUser && loggedInUser.name) ? loggedInUser.name : 'Customer',
+    customer_phone: (loggedInUser && loggedInUser.phone) ? loggedInUser.phone : '—'
+  };
 
-    const { data: sbOrder, error: sbErr } = await sb.from('orders').insert(insertPayload).select().single();
-    if(sbErr){ console.error('Supabase insert error:', sbErr); showToast('❌ Order failed: '+sbErr.message); return; }
+  const { data: sbOrder, error: sbErr } = await sb.from('orders').insert(insertPayload).select().single();
 
-    const orderId = sbOrder.id;
-    window._lastOtp = otp;
-    window._lastOrderId = orderId;
-
-    // Also save locally so orders page shows immediately
-    orderCounter++;
-    localStorage.setItem('tildabite_order_counter', orderCounter);
-    const localOrder = {
-      id: orderId, userId: loggedInUser.email,
-      customer: loggedInUser.name, customer_phone: '—',
-      date: new Date().toLocaleDateString('en-IN'),
-      time: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
-      items: keys.map(k=>{ const i=MENU.find(m=>m.id==k); return i.name+' ×'+cart[k]; }),
-      address, subtotal: sub, tax, total: sub+tax, otp, status: 'pending', rider_id: null, rider: null
-    };
-    const all = loadOrders(); all.unshift(localOrder); saveOrders(all);
-
-    showToast('Order placed! Your OTP is: '+otp+' 🎉');
-    cart={};updateCartUI();
-    renderOrders();
-    setTimeout(()=>{showView('orders');setActive(document.querySelectorAll('.bottom-nav-item')[1]);},1200);
-  } catch(e){
-    console.error('Order error:', e);
-    showToast('❌ Could not place order. Check your connection.');
+  if(sbErr){
+    console.error('Supabase insert error:', sbErr);
+    showToast('❌ ' + (sbErr.message || JSON.stringify(sbErr)));
+    return;
   }
+
+  const orderId = sbOrder.id;
+  window._lastOtp = otp;
+  window._lastOrderId = orderId;
+
+  // Save locally so orders page shows immediately
+  orderCounter++;
+  localStorage.setItem('tildabite_order_counter', orderCounter);
+  const localOrder = {
+    id: orderId, userId: loggedInUser ? loggedInUser.email : 'guest',
+    customer: (loggedInUser && loggedInUser.name) ? loggedInUser.name : 'Customer',
+    customer_phone: '—',
+    date: new Date().toLocaleDateString('en-IN'),
+    time: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
+    items: keys.map(k=>{ const i=MENU.find(m=>m.id==k); return i.name+' ×'+cart[k]; }),
+    address, subtotal: sub, tax, total: sub+tax, otp, status: 'pending', rider_id: null, rider: null
+  };
+  const all = loadOrders(); all.unshift(localOrder); saveOrders(all);
+
+  showToast('Order placed! Your OTP is: '+otp+' 🎉');
+  cart={};updateCartUI();
+  renderOrders();
+  setTimeout(()=>{showView('orders');setActive(document.querySelectorAll('.bottom-nav-item')[1]);},1200);
 }
 
 function renderOrders(){
