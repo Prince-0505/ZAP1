@@ -215,6 +215,35 @@
   .captcha-refresh{background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;margin-top:6px;padding:0;text-decoration:underline}
   .captcha-refresh:hover{color:var(--accent)}
 
+  /* PRODUCT DETAIL MODAL */
+  .product-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:300;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  .product-modal-overlay.open{display:flex}
+  @media(min-width:540px){.product-modal-overlay{align-items:center}}
+  .product-modal{background:var(--surface);width:100%;max-width:480px;border-radius:24px 24px 0 0;overflow:hidden;box-shadow:0 -8px 40px rgba(45,21,6,0.18);max-height:92vh;display:flex;flex-direction:column;animation:slideUp 0.32s cubic-bezier(.34,1.2,.64,1)}
+  @media(min-width:540px){.product-modal{border-radius:24px;max-height:88vh}}
+  @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .pm-img{height:200px;display:flex;align-items:center;justify-content:center;font-size:90px;background:linear-gradient(145deg,#FFF0E6,#FFF8F3);position:relative;flex-shrink:0}
+  .pm-img img{width:100%;height:100%;object-fit:cover}
+  .pm-close{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);border:2.5px solid rgba(255,255,255,0.35);width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:22px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 14px rgba(0,0,0,0.45);color:#fff;transition:background 0.18s,transform 0.18s}
+  .pm-close:hover{background:rgba(220,38,38,1);border-color:rgba(220,38,38,0.6);transform:scale(1.12)}
+  .pm-body{padding:20px;overflow-y:auto;flex:1}
+  .pm-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .pm-name{font-size:22px;font-weight:800;margin-bottom:6px;letter-spacing:-0.4px;color:var(--text)}
+  .pm-desc{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:16px}
+  .pm-divider{height:1px;background:var(--border);margin:14px 0}
+  .pm-info-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2);margin-bottom:10px}
+  .pm-info-row i{color:var(--accent);font-size:16px;width:18px}
+  .pm-info-row strong{color:var(--text);font-weight:600}
+  .pm-footer{padding:16px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface)}
+  .pm-price{font-size:26px;font-weight:900;color:var(--accent)}
+  .pm-add-btn{background:linear-gradient(135deg,#E8501A,#FF6B35);color:#fff;border:none;padding:12px 28px;border-radius:50px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(232,80,26,0.3);transition:all 0.2s;display:flex;align-items:center;gap:8px}
+  .pm-add-btn:hover{background:linear-gradient(135deg,#d4481a,#E8501A);transform:translateY(-1px)}
+  .pm-qty-control{display:flex;align-items:center;gap:12px;background:var(--card);border:1.5px solid var(--border2);border-radius:50px;padding:6px 14px}
+  .pm-qty-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:20px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+  .pm-qty-num{font-size:16px;font-weight:700;min-width:20px;text-align:center;color:var(--text)}
+  .pm-oos-btn{background:var(--text3);color:#fff;border:none;padding:12px 28px;border-radius:50px;font-size:15px;font-weight:700;cursor:not-allowed;opacity:0.7}
+  .pm-card-click{cursor:pointer}
+
   /* T&C PAGE */
   .tnc-view{padding:20px;max-width:700px;margin:0 auto;padding-bottom:100px}
   .tnc-back{display:flex;align-items:center;gap:10px;margin-bottom:24px}
@@ -543,6 +572,29 @@
   </div>
 </div>
 
+<!-- PRODUCT DETAIL MODAL -->
+<div class="product-modal-overlay" id="product-modal-overlay" onclick="if(event.target===this)closeProductModal()">
+  <div class="product-modal" id="product-modal">
+    <div class="pm-img" id="pm-img">
+      <button class="pm-close" onclick="closeProductModal()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="2" y1="2" x2="14" y2="14" stroke="white" stroke-width="2.5" stroke-linecap="round"/><line x1="14" y1="2" x2="2" y2="14" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="pm-body">
+      <div class="pm-tags" id="pm-tags"></div>
+      <div class="pm-name" id="pm-name"></div>
+      <div class="pm-desc" id="pm-desc"></div>
+      <!-- highlights strip -->
+      <div id="pm-highlights" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+      <div class="pm-divider"></div>
+      <!-- rating + spice only -->
+      <div id="pm-spice-rating" style="display:flex;gap:10px;margin-bottom:14px"></div>
+    </div>
+    <div class="pm-footer">
+      <div class="pm-price" id="pm-price"></div>
+      <div id="pm-action"></div>
+    </div>
+  </div>
+</div>
+
 <!-- CART DRAWER -->
 <div class="cart-overlay" id="cart-overlay" onclick="closeCartIfOutside(event)">
   <div class="cart-drawer">
@@ -585,6 +637,8 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="zapfood_supabase.js"></script>
 <script>
 // ─── SHARED MENU (admin controls this via tildabite_menu in localStorage) ───
 const MENU_KEY = 'tildabite_menu';
@@ -691,24 +745,24 @@ function renderMenu(items){
     if(oos) badges.push('<span style="display:inline-block;background:rgba(220,38,38,0.1);color:#DC2626;border:1px solid rgba(220,38,38,0.35);border-radius:6px;font-size:10px;font-weight:700;padding:2px 8px;margin-bottom:6px;letter-spacing:0.5px;margin-left:4px">OUT OF STOCK</span>');
     else if(fewLeft) badges.push(`<span style="display:inline-block;background:rgba(245,158,11,0.12);color:#b45309;border:1px solid rgba(245,158,11,0.35);border-radius:6px;font-size:10px;font-weight:700;padding:2px 8px;margin-bottom:6px;letter-spacing:0.5px;margin-left:4px">ONLY ${item.stock} LEFT</span>`);
     const imgHtml = item.image
-      ? `<div class="menu-card-img" style="background:#000"><img src="${item.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='${item.emoji||'🍽️'}';this.parentElement.style.background='linear-gradient(145deg,#FFF0E6,#FFF8F3)';this.parentElement.style.fontSize='68px'"></div>`
-      : `<div class="menu-card-img" style="position:relative">${item.emoji||'🍽️'}${oos?'<div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;letter-spacing:1px">SOLD OUT</div>':''}</div>`;
+      ? `<div class="menu-card-img" style="background:#000;position:relative"><img src="${item.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='${item.emoji||'🍽️'}';this.parentElement.style.background='linear-gradient(145deg,#FFF0E6,#FFF8F3)';this.parentElement.style.fontSize='68px'"><span style="position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,0.55);color:#fff;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600">View Details</span></div>`
+      : `<div class="menu-card-img" style="position:relative">${item.emoji||'🍽️'}${oos?'<div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;letter-spacing:1px">SOLD OUT</div>':'<span style="position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,0.45);color:#fff;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600">View Details</span>'}</div>`;
     const actionHtml = oos
       ? `<button class="add-btn" disabled style="background:var(--text3);cursor:not-allowed;box-shadow:none" title="Out of stock">×</button>`
       : qty===0
         ? `<button class="add-btn" onclick="addItem(${item.id})">+</button>`
         : `<div class="qty-control"><button class="qty-btn" onclick="removeItem(${item.id})">−</button><span class="qty-num">${qty}</span><button class="qty-btn" onclick="addItem(${item.id})"${rem<=0?' disabled style="opacity:0.4;cursor:not-allowed"':''}>+</button></div>`;
     return `<div class="menu-card"${oos?' style="opacity:0.7"':''}>
-      ${imgHtml}
+      <div onclick="openProductModal(${item.id})" style="cursor:pointer">${imgHtml}</div>
       <div class="menu-card-body">
         <div style="display:flex;flex-wrap:wrap;align-items:center">
           <div class="${item.veg?'veg-tag':'nonveg-tag'}">${item.veg?'VEG':'NON-VEG'}</div>
           ${badges.join('')}
         </div>
-        <h3>${item.name}</h3>
-        <p>${item.desc||''}</p>
+        <h3 onclick="openProductModal(${item.id})" style="cursor:pointer;text-decoration:none" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color=''">${item.name}</h3>
+        <p onclick="openProductModal(${item.id})" style="cursor:pointer">${item.desc||''}</p>
         <div class="menu-card-footer">
-          <div class="price">₹${item.price}</div>
+          <div class="price" onclick="openProductModal(${item.id})" style="cursor:pointer">₹${item.price}</div>
           ${actionHtml}
         </div>
       </div>
@@ -745,6 +799,134 @@ function applyFilters(q){
   document.getElementById('menu-section-title').textContent = items.length + ' items found';
   document.getElementById('diet-count-badge').textContent = items.length + ' item' + (items.length!==1?'s':'');
   renderMenu(items);
+}
+
+// ── PRODUCT DETAIL MODAL ──────────────────────────────────────────
+const CAT_LABELS = {biryani:'Biryani',chicken:'Chicken',veg:'Veg',snacks:'Snacks & Fast Food',drinks:'Drinks'};
+
+// Per-item extra data (spice, cals, rating, allergens, highlights)
+const ITEM_META = {
+  1:{spice:3,cals:520,rating:4.8,reviews:214,prepMin:25,allergens:['Gluten','Dairy'],highlights:['🏆 House Special','🔥 Smoky Dum Style','🧄 Secret Masala']},
+  2:{spice:1,cals:380,rating:4.5,reviews:98,prepMin:20,allergens:['Gluten'],highlights:['🌱 100% Plant-Based','🧅 Caramelised Onions','✨ Light & Fragrant']},
+  3:{spice:4,cals:610,rating:4.9,reviews:176,prepMin:35,allergens:['Gluten'],highlights:['🥩 Premium Cut','⏳ 3-Hour Slow Cook','🍲 Sealed Handi']},
+  4:{spice:3,cals:490,rating:4.7,reviews:132,prepMin:20,allergens:['Gluten','Dairy'],highlights:['🍗 Juicy Chicken','🫓 4 Hot Rotis','🥒 With Pickle']},
+  5:{spice:2,cals:540,rating:4.6,reviews:89,prepMin:22,allergens:['Dairy'],highlights:['🧈 Creamy Tomato Base','🔥 Tandoor Pieces','🍞 Pairs with Naan']},
+  6:{spice:2,cals:460,rating:4.4,reviews:74,prepMin:15,allergens:['Gluten'],highlights:['🌿 Punjabi Style','🍥 2 Fluffy Bhaturas','🧅 Fresh Onion Rings']},
+  7:{spice:1,cals:350,rating:4.5,reviews:61,prepMin:18,allergens:['Dairy'],highlights:['🧀 Fresh Paneer','🌿 Mint Chutney','♨️ Smoky Marinade']},
+  8:{spice:1,cals:310,rating:4.3,reviews:55,prepMin:12,allergens:['Gluten','Soy'],highlights:['🥔 Crispy Aloo Tikki','🌶️ Chipotle Mayo','🥬 Fresh Veggies']},
+  9:{spice:0,cals:220,rating:4.6,reviews:103,prepMin:5,allergens:['Dairy'],highlights:['☁️ Rich Cold Brew','🍦 Vanilla Ice Cream','❄️ Served Chilled']},
+  10:{spice:0,cals:90,rating:4.4,reviews:67,prepMin:5,allergens:[],highlights:['🌿 Fresh Mint','🍋 Real Lime','🫧 Light & Fizzy']},
+};
+
+function getSpiceLabel(lvl){ return ['No Spice','Mild','Medium','Spicy','Very Spicy','Extra Hot'][lvl]||'Medium'; }
+function getSpiceDots(lvl){ return '🌶️'.repeat(lvl)+'<span style="opacity:0.2">'+'🌶️'.repeat(Math.max(0,5-lvl))+'</span>'; }
+function getRatingStars(r){
+  const full=Math.floor(r),half=(r%1>=0.5)?1:0,empty=5-full-half;
+  return '<span style="color:#F59E0B;font-size:14px">'+'★'.repeat(full)+(half?'½':'')+'<span style="opacity:0.25">'+'★'.repeat(empty)+'</span></span>';
+}
+
+function openProductModal(id){
+  const item = MENU.find(m=>m.id==id);
+  if(!item) return;
+  const oos = isOutOfStock(item);
+  const qty = cart[id]||0;
+  const rem = remainingStock(item);
+  const meta = ITEM_META[id] || {spice:2,cals:400,rating:4.5,reviews:50,prepMin:20,allergens:[],highlights:[]};
+
+  const closeBtnHtml = `<button class="pm-close" onclick="closeProductModal()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="2" y1="2" x2="14" y2="14" stroke="white" stroke-width="2.5" stroke-linecap="round"/><line x1="14" y1="2" x2="2" y2="14" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></button>`;
+  const imgEl = document.getElementById('pm-img');
+  imgEl.innerHTML = item.image
+    ? `<img src="${item.image}" onerror="this.parentElement.innerHTML='<span style=font-size:90px>${item.emoji||'🍽️'}</span>';this.parentElement.style.background='linear-gradient(145deg,#FFF0E6,#FFF8F3)'">${closeBtnHtml}`
+    : `<span style="font-size:90px">${item.emoji||'🍽️'}</span>${closeBtnHtml}`;
+  if(oos){
+    const overlay = document.createElement('div');
+    overlay.style.cssText='position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:800;letter-spacing:2px';
+    overlay.textContent='SOLD OUT';
+    imgEl.appendChild(overlay);
+  }
+
+  // Tags
+  const tagsEl = document.getElementById('pm-tags');
+  let tagsHtml = `<span class="${item.veg?'veg-tag':'nonveg-tag'}" style="margin-bottom:0">${item.veg?'🟢 VEG':'🔴 NON-VEG'}</span>`;
+  if(item.bestseller) tagsHtml += `<span style="background:rgba(245,158,11,0.15);color:#b45309;border:1px solid rgba(245,158,11,0.35);border-radius:6px;font-size:10px;font-weight:700;padding:3px 10px;letter-spacing:0.5px">⭐ BEST SELLER</span>`;
+  if(oos) tagsHtml += `<span style="background:rgba(220,38,38,0.1);color:#DC2626;border:1px solid rgba(220,38,38,0.35);border-radius:6px;font-size:10px;font-weight:700;padding:3px 10px;letter-spacing:0.5px">OUT OF STOCK</span>`;
+  tagsEl.innerHTML = tagsHtml;
+
+  document.getElementById('pm-name').textContent = item.name;
+  document.getElementById('pm-desc').textContent = item.desc||'A delicious item freshly prepared in our kitchen.';
+  document.getElementById('pm-price').textContent = '₹'+item.price;
+
+  // ── HIGHLIGHTS PILLS ──
+  document.getElementById('pm-highlights').innerHTML = meta.highlights.map(h=>
+    `<span style="background:var(--accent-bg);color:var(--accent);border:1px solid rgba(232,80,26,0.2);border-radius:20px;font-size:12px;font-weight:600;padding:5px 12px">${h}</span>`
+  ).join('');
+
+  // ── SPICE + RATING ROW ──
+  document.getElementById('pm-spice-rating').innerHTML = `
+    <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Spice Level</div>
+      <div style="font-size:13px;margin-bottom:4px">${getSpiceDots(meta.spice)}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${getSpiceLabel(meta.spice)}</div>
+    </div>
+    <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Rating</div>
+      <div style="margin-bottom:4px">${getRatingStars(meta.rating)}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${meta.rating} <span style="font-weight:400;color:var(--text3)">(${meta.reviews} reviews)</span></div>
+    </div>`;
+
+  // ── ACTION BUTTON ──
+  const actionEl = document.getElementById('pm-action');
+  if(oos){
+    actionEl.innerHTML = `<button class="pm-oos-btn"><i class="ti ti-ban"></i> Out of Stock</button>`;
+  } else if(qty===0){
+    actionEl.innerHTML = `<button class="pm-add-btn" onclick="addItemFromModal(${item.id})"><i class="ti ti-shopping-cart-plus"></i> Add to Cart</button>`;
+  } else {
+    actionEl.innerHTML = `<div class="pm-qty-control">
+      <button class="pm-qty-btn" onclick="removeItemFromModal(${item.id})">−</button>
+      <span class="pm-qty-num">${qty}</span>
+      <button class="pm-qty-btn" onclick="addItemFromModal(${item.id})"${rem<=0?' disabled style="opacity:0.4;cursor:not-allowed"':''}>+</button>
+    </div>`;
+  }
+
+  document.getElementById('product-modal-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closeProductModal(){
+  document.getElementById('product-modal-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+function addItemFromModal(id){
+  addItem(id);
+  // Refresh action button inside modal
+  const item = MENU.find(m=>m.id==id);
+  if(!item) return;
+  const qty = cart[id]||0;
+  const rem = remainingStock(item);
+  const actionEl = document.getElementById('pm-action');
+  actionEl.innerHTML = `<div class="pm-qty-control">
+    <button class="pm-qty-btn" onclick="removeItemFromModal(${id})">−</button>
+    <span class="pm-qty-num">${qty}</span>
+    <button class="pm-qty-btn" onclick="addItemFromModal(${id})"${rem<=0?' disabled style="opacity:0.4;cursor:not-allowed"':''}>+</button>
+  </div>`;
+}
+
+function removeItemFromModal(id){
+  removeItem(id);
+  const qty = cart[id]||0;
+  const item = MENU.find(m=>m.id==id);
+  const rem = remainingStock(item);
+  const actionEl = document.getElementById('pm-action');
+  if(qty===0){
+    actionEl.innerHTML = `<button class="pm-add-btn" onclick="addItemFromModal(${id})"><i class="ti ti-shopping-cart-plus"></i> Add to Cart</button>`;
+  } else {
+    actionEl.innerHTML = `<div class="pm-qty-control">
+      <button class="pm-qty-btn" onclick="removeItemFromModal(${id})">−</button>
+      <span class="pm-qty-num">${qty}</span>
+      <button class="pm-qty-btn" onclick="addItemFromModal(${id})"${rem<=0?' disabled style="opacity:0.4;cursor:not-allowed"':''}>+</button>
+    </div>`;
+  }
 }
 
 function addItem(id){
@@ -1118,22 +1300,58 @@ function closeForgotModal(){
   document.getElementById('forgot-modal').classList.remove('open');
 }
 
-function handleForgotPassword(){
+async function handleForgotPassword(){
   const email = document.getElementById('forgot-email').value.trim().toLowerCase();
   if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
     showToast('Please enter a valid email address'); return;
   }
-  const accounts = getAccounts();
-  // Always show success (don't reveal if account exists — security best practice)
-  document.getElementById('forgot-sent-to').textContent = email;
-  document.getElementById('forgot-step-1').style.display='none';
-  document.getElementById('forgot-step-2').style.display='block';
-  // If account exists, log it (in real app: send email via Supabase)
-  if(accounts[email]){
-    console.info('[TildaBite] Password reset requested for:', email);
-    // TODO: integrate sb.auth.resetPasswordForEmail(email) when Supabase is connected
+  const btn = document.querySelector('.forgot-submit');
+  if(btn){ btn.disabled = true; btn.textContent = 'Checking...'; }
+  try {
+    // 1) Check if an account exists for this email (via SECURITY DEFINER RPC)
+    const { data: exists, error: rpcErr } = await sb.rpc('email_exists', { p_email: email });
+    if (rpcErr) throw rpcErr;
+    if (!exists) {
+      showToast('❌ No account found for this email');
+      if(btn){ btn.disabled = false; btn.textContent = 'Send reset link'; }
+      return;
+    }
+    // 2) Send the reset link only when the account exists
+    const redirectTo = window.location.href.split('#')[0].split('?')[0];
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+    document.getElementById('forgot-sent-to').textContent = email;
+    document.getElementById('forgot-step-1').style.display='none';
+    document.getElementById('forgot-step-2').style.display='block';
+    showToast('Reset link sent! Check your inbox 📧');
+  } catch(e){
+    console.error(e);
+    showToast('❌ ' + (e.message || 'Could not send reset link'));
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'Send reset link'; }
   }
 }
+
+// ── HANDLE RECOVERY LINK (user clicks email link) ─────────────
+(function detectRecovery(){
+  function checkHash(){
+    const h = window.location.hash || '';
+    if (h.includes('type=recovery')) {
+      setTimeout(promptNewPassword, 400);
+    }
+  }
+  async function promptNewPassword(){
+    const pw = window.prompt('Enter your NEW password (min 6 chars):');
+    if(!pw) return;
+    if(pw.length < 6){ showToast('Password too short'); return; }
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if(error){ showToast('❌ ' + error.message); return; }
+    showToast('✅ Password updated! You are now signed in.');
+    history.replaceState(null,'',window.location.pathname);
+  }
+  window.addEventListener('load', checkHash);
+  window.addEventListener('hashchange', checkHash);
+})();
 
 let toastTimer;
 function showToast(msg){
