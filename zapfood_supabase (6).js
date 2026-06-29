@@ -132,7 +132,7 @@ async function placeOrderSupabase(address, paymentMethod) {
 // ── A6b. Forgot / Reset Password ────────────────────────────
 async function resetPassword(email) {
   const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/reset-password.html'
+    redirectTo: 'https://xxqctsfrnynrfoldnahw.supabase.co/auth/v1/verify'
   });
   if (error) return showToast('❌ ' + error.message);
   showToast('Reset link sent! Check your email 📧');
