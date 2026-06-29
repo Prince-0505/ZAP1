@@ -1039,58 +1039,63 @@ function loadOrders(){ try{ return JSON.parse(localStorage.getItem('tildabite_or
 function saveOrders(arr){ localStorage.setItem('tildabite_orders', JSON.stringify(arr)); }
 let orderCounter = parseInt(localStorage.getItem('tildabite_order_counter')||'1000');
 
-function placeOrder(){
+async function placeOrder(){
   if(!requireAuth('placeOrder')) return;
   const address = document.getElementById('delivery-address').value.trim();
   if(!address){ showToast('Please enter a delivery address'); return; }
   const keys = Object.keys(cart).filter(k=>cart[k]>0);
   if(!keys.length){ showToast('Your cart is empty'); return; }
-  const otp = String(Math.floor(1000 + Math.random() * 9000));
-  orderCounter++;
-  localStorage.setItem('tildabite_order_counter', orderCounter);
   const sub = keys.reduce((s,k)=>{const i=MENU.find(m=>m.id==k);return s+i.price*cart[k];},0);
+  if(sub < MIN_ORDER){ showToast('Minimum order is ₹'+MIN_ORDER+'. Add ₹'+(MIN_ORDER-sub)+' more!'); return; }
   const tax = Math.round(sub*0.05);
-  const newOrder = {
-    id: 'ORD'+orderCounter,
-    userId: loggedInUser.email,
-    customer: loggedInUser.name,
-    customer_phone: '—',
-    date: new Date().toLocaleDateString('en-IN'),
-    time: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
-    items: keys.map(k=>{ const i=MENU.find(m=>m.id==k); return i.name+' ×'+cart[k]; }),
-    address: address,
-    subtotal: sub,
-    tax: tax,
-    total: sub+tax,
-    otp: otp,
-    status: 'pending',
-    rider_id: null,
-    rider: null
-  };
-  const all = loadOrders();
-  all.unshift(newOrder);
-  saveOrders(all);
-  // Decrement stock in shared menu + bump sold counts (admin sees this live)
+  const otp = String(Math.floor(1000 + Math.random() * 9000));
+  const sbItems = keys.map(k=>{ const i=MENU.find(m=>m.id==k); return {id:i.id, name:i.name, qty:cart[k], price:i.price}; });
+
+  // ── Save to Supabase (works across all devices) ──
   try {
-    const shared = JSON.parse(localStorage.getItem(MENU_KEY)||'[]');
-    keys.forEach(k=>{
-      const i = shared.findIndex(x=>x.id==k);
-      if(i<0) return;
-      shared[i].sold = (shared[i].sold||0) + cart[k];
-      if(typeof shared[i].stock === 'number'){
-        shared[i].stock = Math.max(0, shared[i].stock - cart[k]);
-        if(shared[i].stock === 0) shared[i].oos = true;
-      }
-    });
-    localStorage.setItem(MENU_KEY, JSON.stringify(shared));
-    loadSharedMenu();
-  } catch(e){}
-  showToast('Order placed! Your delivery OTP is: '+otp+' 🎉');
-  window._lastOtp = otp;
-  window._lastOrderId = newOrder.id;
-  cart={};updateCartUI();
-  renderOrders();
-  setTimeout(()=>{showView('orders');setActive(document.querySelectorAll('.bottom-nav-item')[1]);},1200);
+    const { data: { user } } = await sb.auth.getUser();
+    const insertPayload = {
+      delivery_address: address,
+      items: sbItems,
+      subtotal: sub,
+      tax: tax,
+      total: sub + tax,
+      payment_method: 'cod',
+      delivery_otp: otp,
+      status: 'pending',
+      customer_name: loggedInUser.name || 'Customer',
+      customer_phone: loggedInUser.phone || '—'
+    };
+    if(user) insertPayload.user_id = user.id;
+
+    const { data: sbOrder, error: sbErr } = await sb.from('orders').insert(insertPayload).select().single();
+    if(sbErr){ console.error('Supabase insert error:', sbErr); showToast('❌ Order failed: '+sbErr.message); return; }
+
+    const orderId = sbOrder.id;
+    window._lastOtp = otp;
+    window._lastOrderId = orderId;
+
+    // Also save locally so orders page shows immediately
+    orderCounter++;
+    localStorage.setItem('tildabite_order_counter', orderCounter);
+    const localOrder = {
+      id: orderId, userId: loggedInUser.email,
+      customer: loggedInUser.name, customer_phone: '—',
+      date: new Date().toLocaleDateString('en-IN'),
+      time: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
+      items: keys.map(k=>{ const i=MENU.find(m=>m.id==k); return i.name+' ×'+cart[k]; }),
+      address, subtotal: sub, tax, total: sub+tax, otp, status: 'pending', rider_id: null, rider: null
+    };
+    const all = loadOrders(); all.unshift(localOrder); saveOrders(all);
+
+    showToast('Order placed! Your OTP is: '+otp+' 🎉');
+    cart={};updateCartUI();
+    renderOrders();
+    setTimeout(()=>{showView('orders');setActive(document.querySelectorAll('.bottom-nav-item')[1]);},1200);
+  } catch(e){
+    console.error('Order error:', e);
+    showToast('❌ Could not place order. Check your connection.');
+  }
 }
 
 function renderOrders(){
