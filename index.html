@@ -673,7 +673,7 @@ let authMode = 'signup';
 let currentCat = 'all';
 let dietFilter = 'all'; // 'all' | 'veg' | 'nonveg'
 let isLoggedIn = false;
-let loggedInUser = { name: 'Guest', email: '' };
+let loggedInUser = { name: 'Guest', email: '', phone: '' };
 
 function requireAuth(action) {
   if (!isLoggedIn) {
@@ -1055,7 +1055,7 @@ function placeOrder(){
     id: 'ORD'+orderCounter,
     userId: loggedInUser.email,
     customer: loggedInUser.name,
-    customer_phone: '—',
+    customer_phone: loggedInUser.phone || '—',
     date: new Date().toLocaleDateString('en-IN'),
     time: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
     items: keys.map(k=>{ const i=MENU.find(m=>m.id==k); return i.name+' ×'+cart[k]; }),
@@ -1252,13 +1252,14 @@ function handleAuth(){
   failedAttempts = 0;
   document.getElementById('captcha-box').classList.remove('visible');
   isLoggedIn = true;
-  loggedInUser = { name: acc.name, email: acc.email };
+  loggedInUser = { name: acc.name, email: acc.email, phone: acc.phone || '' };
   document.getElementById('auth-nav-label').textContent = acc.name.split(' ')[0];
   document.getElementById('auth-nav-btn').querySelector('i').className = 'ti ti-user-circle';
   document.getElementById('profile-name-display').textContent = acc.name;
   document.getElementById('profile-email-display').textContent = acc.email;
   showToast('Signed in successfully! 🎉');
   document.getElementById('auth-submit-btn').textContent = '✓ Signed in';
+  renderOrders(); // Now safe — loggedInUser.email is set
   setTimeout(()=>{
     if(pendingAction==='checkout'){ showView('menu'); setTimeout(()=>{ openCart(); }, 300); }
     else if(pendingAction==='placeOrder'){ renderCheckout(); showView('checkout'); }
@@ -1274,15 +1275,18 @@ function handleAuthNavClick(){
 
 function signOut(){
   isLoggedIn = false;
-  loggedInUser = { name: 'Guest', email: '' };
+  loggedInUser = { name: 'Guest', email: '', phone: '' };
   cart = {};
   updateCartUI();
+  window._lastOtp = null;
+  window._lastOrderId = null;
   document.getElementById('auth-nav-label').textContent = 'Sign in';
   document.getElementById('auth-nav-btn').querySelector('i').className = 'ti ti-user';
   document.getElementById('auth-email').value='';
   document.getElementById('auth-pass').value='';
   document.getElementById('login-identifier').value='';
   document.getElementById('login-pass').value='';
+  renderOrders(); // clear orders panel
   showToast('Signed out successfully');
   showView('auth');
   setActive(document.querySelectorAll('.bottom-nav-item')[0]);
@@ -1373,5 +1377,6 @@ setTimeout(() => {
   loadSharedMenu();
   applyFilters('');
 }, 900);
-renderOrders();
+// NOTE: renderOrders() is intentionally NOT called here.
+// It is called after successful login so loggedInUser.email is set.
 </script>
