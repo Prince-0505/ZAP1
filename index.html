@@ -174,6 +174,60 @@
   .profile-item span{flex:1;font-size:14px}
   .profile-item .chevron{color:var(--text3);font-size:14px}
 
+  /* MINIMUM ORDER BANNER */
+  .min-order-warn{background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.3);color:var(--red);border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;margin-bottom:10px;display:none;align-items:center;gap:8px}
+  .min-order-warn.show{display:flex}
+
+  /* FORGOT PASSWORD */
+  .forgot-link{text-align:right;margin-top:-8px;margin-bottom:10px;font-size:12px}
+  .forgot-link a{color:var(--accent);text-decoration:none;cursor:pointer;font-weight:500}
+  .forgot-link a:hover{text-decoration:underline}
+  .forgot-modal{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+  .forgot-modal.open{display:flex}
+  .forgot-card{background:#fff;border-radius:18px;padding:32px;width:100%;max-width:380px;box-shadow:0 12px 48px rgba(45,21,6,0.18)}
+  body.dark .forgot-card{background:var(--surface)}
+  .forgot-card h3{font-size:18px;font-weight:700;margin-bottom:6px}
+  .forgot-card p{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+  .forgot-card .form-group{margin-bottom:14px}
+  .forgot-actions{display:flex;gap:10px;margin-top:6px}
+  .forgot-actions button{flex:1;padding:11px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;border:none}
+  .forgot-cancel{background:var(--surface);border:1px solid var(--border2)!important;color:var(--text2)}
+  .forgot-submit{background:linear-gradient(135deg,#E8501A,#FF6B35);color:#fff;box-shadow:0 3px 12px rgba(232,80,26,0.28)}
+  .forgot-success{text-align:center;padding:10px 0}
+  .forgot-success i{font-size:48px;color:var(--green);display:block;margin-bottom:12px}
+
+  /* TERMS CHECKBOX */
+  .terms-row{display:flex;align-items:flex-start;gap:10px;margin:14px 0 4px;font-size:13px;color:var(--text2);line-height:1.5}
+  .terms-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin-top:2px;flex-shrink:0;cursor:pointer}
+  .terms-row a{color:var(--accent);text-decoration:none;font-weight:600;border-bottom:1px solid rgba(232,80,26,0.3)}
+  .terms-row a:hover{border-bottom-color:var(--accent)}
+
+  /* CAPTCHA */
+  .captcha-box{background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--radius);padding:14px 16px;margin:12px 0;display:none}
+  .captcha-box.visible{display:block}
+  .captcha-label{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+  .captcha-question{font-size:17px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .captcha-question span{background:var(--accent-bg);color:var(--accent);padding:2px 10px;border-radius:6px}
+  .captcha-input{width:100%;background:#fff;border:1.5px solid var(--border2);color:var(--text);padding:9px 12px;border-radius:8px;font-size:15px;font-weight:700;outline:none;text-align:center;letter-spacing:2px}
+  .captcha-input:focus{border-color:var(--accent)}
+  .captcha-error{color:var(--red);font-size:12px;margin-top:6px;display:none}
+  .captcha-error.show{display:block}
+  .captcha-refresh{background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;margin-top:6px;padding:0;text-decoration:underline}
+  .captcha-refresh:hover{color:var(--accent)}
+
+  /* T&C PAGE */
+  .tnc-view{padding:20px;max-width:700px;margin:0 auto;padding-bottom:100px}
+  .tnc-back{display:flex;align-items:center;gap:10px;margin-bottom:24px}
+  .tnc-back button{background:none;border:1px solid var(--border2);color:var(--text2);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center}
+  .tnc-back button:hover{border-color:var(--accent);color:var(--accent)}
+  .tnc-title{font-size:26px;font-weight:800;margin-bottom:4px}
+  .tnc-updated{font-size:12px;color:var(--text3);margin-bottom:28px}
+  .tnc-section{margin-bottom:24px}
+  .tnc-section h3{font-size:15px;font-weight:700;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .tnc-section p,.tnc-section li{font-size:14px;color:var(--text2);line-height:1.8}
+  .tnc-section ul{padding-left:18px;margin-top:6px}
+  .tnc-section li{margin-bottom:4px}
+
   /* CHECKOUT */
   .checkout-view{padding:20px;max-width:560px;margin:0 auto;padding-bottom:100px}
   .checkout-section{background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 2px 10px rgba(45,21,6,0.05)}
@@ -305,9 +359,26 @@
       <div id="login-fields" style="display:none">
         <div class="form-group"><label>Email or Mobile number</label><input type="text" placeholder="you@example.com or 98765 43210" id="login-identifier"></div>
         <div class="form-group"><label>Password</label><input type="password" placeholder="••••••••" id="login-pass" onkeydown="if(event.key==='Enter')handleAuth()"></div>
+        <div class="forgot-link"><a onclick="openForgotModal()">Forgot password?</a></div>
       </div>
 
       <button class="auth-submit" onclick="handleAuth()" id="auth-submit-btn">Create account</button>
+
+      <!-- CAPTCHA (shows after 5 failed attempts) -->
+      <div class="captcha-box" id="captcha-box">
+        <div class="captcha-label">🤖 Human verification</div>
+        <div class="captcha-question">What is <span id="captcha-a"></span> + <span id="captcha-b"></span> ?</div>
+        <input class="captcha-input" type="number" id="captcha-answer" placeholder="Your answer" oninput="document.getElementById('captcha-error').classList.remove('show')">
+        <div class="captcha-error" id="captcha-error">Incorrect answer — please try again</div>
+        <button class="captcha-refresh" onclick="generateCaptcha()">↻ New question</button>
+      </div>
+
+      <!-- TERMS CHECKBOX (signup only) -->
+      <div class="terms-row" id="terms-row">
+        <input type="checkbox" id="terms-checkbox">
+        <label for="terms-checkbox">I have read and agree to the <a onclick="showView('tnc')" href="javascript:void(0)">Terms &amp; Conditions</a> and <a onclick="showView('tnc')" href="javascript:void(0)">Privacy Policy</a> of TildaBite</label>
+      </div>
+
       <div class="auth-switch" id="auth-switch">Already have an account? <a onclick="toggleAuth()">Sign in</a></div>
     </div>
   </div>
@@ -370,11 +441,105 @@
       <label class="payment-opt selected" onclick="selectPay(this)">
         <input type="radio" name="pay" checked> <div class="payment-label"><strong>Razorpay UPI</strong><span>Pay via UPI, NetBanking, Cards</span></div> <span style="font-size:20px">💳</span>
       </label>
-      <label class="payment-opt" onclick="selectPay(this)">
-        <input type="radio" name="pay"> <div class="payment-label"><strong>Cash on delivery</strong><span>Pay when order arrives</span></div> <span style="font-size:20px">💵</span>
-      </label>
     </div>
     <button class="pay-btn" onclick="placeOrder()"><i class="ti ti-lock"></i> Place order securely</button>
+  </div>
+</div>
+
+<!-- ============ TERMS & CONDITIONS VIEW ============ -->
+<div class="view" id="view-tnc">
+  <div class="tnc-view">
+    <div class="tnc-back">
+      <button onclick="history.back(); showView(previousView||'auth')"><i class="ti ti-arrow-left"></i></button>
+      <span style="font-size:14px;color:var(--text2)">Back</span>
+    </div>
+    <div class="tnc-title">Terms &amp; Conditions</div>
+    <div class="tnc-updated">Last updated: June 2025 &nbsp;·&nbsp; TildaBite Cloud Kitchen</div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-info-circle"></i> 1. About TildaBite</h3>
+      <p>TildaBite ("we", "us", or "our") is an online food ordering platform operated as a cloud kitchen. By creating an account or placing an order, you agree to be bound by these Terms &amp; Conditions. If you do not agree, please do not use our platform.</p>
+    </div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-user-check"></i> 2. Eligibility &amp; Account</h3>
+      <ul>
+        <li>You must be at least 18 years old to create an account.</li>
+        <li>You are responsible for keeping your login credentials confidential.</li>
+        <li>You must provide accurate, complete, and current information during registration.</li>
+        <li>TildaBite reserves the right to suspend or terminate accounts that violate these terms.</li>
+      </ul>
+    </div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-shopping-cart"></i> 3. Orders &amp; Payments</h3>
+      <ul>
+        <li>All prices are in Indian Rupees (₹) and inclusive of applicable taxes unless stated.</li>
+        <li>Orders once placed and confirmed cannot be cancelled except in cases of unavailability.</li>
+        <li>TildaBite accepts payments via UPI, Net Banking, and Debit/Credit Cards. All orders are prepaid.</li>
+        <li>In case of payment failure, the amount will be refunded to your original payment method within 5–7 business days.</li>
+        <li>TildaBite is not responsible for delays caused by third-party payment gateways.</li>
+      </ul>
+    </div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-truck"></i> 4. Delivery Policy</h3>
+      <ul>
+        <li>Estimated delivery times are indicative and may vary based on traffic, weather, and demand.</li>
+        <li>A 4-digit OTP will be shared with you. Please provide it to the delivery rider to confirm delivery.</li>
+        <li>TildaBite is not liable for incorrect delivery addresses provided by the customer.</li>
+        <li>Free delivery is currently offered on all orders subject to minimum order value.</li>
+      </ul>
+    </div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-refresh"></i> 5. Refunds &amp; Cancellations</h3>
+      <ul>
+        <li>Refund requests must be raised within <strong>30 minutes</strong> of delivery.</li>
+        <li>Once a request is raised, our team will <strong>contact you directly</strong> to understand the issue and negotiate a resolution (replacement, partial refund, or full refund).</li>
+        <li>Refund will only be processed <strong>after mutual agreement and confirmation from the customer</strong>. No refund will be issued without your explicit confirmation.</li>
+        <li>Approved refunds will be credited to your original payment method within <strong>5–7 business days</strong>.</li>
+        <li>Requests raised after 30 minutes of delivery will not be entertained.</li>
+      </ul>
+    </div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-shield"></i> 6. Privacy &amp; Data</h3>
+      <ul>
+        <li>We collect your name, email, phone number, and delivery address to process orders.</li>
+        <li>Your data is stored securely via Supabase and is never sold to third parties.</li>
+        <li>We may use your email or phone to send order updates and promotional offers. You may opt out at any time.</li>
+        <li>By using TildaBite, you consent to our data collection as described above.</li>
+      </ul>
+    </div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-salad"></i> 7. Food Safety &amp; Allergens</h3>
+      <ul>
+        <li>TildaBite takes food safety seriously and follows FSSAI guidelines.</li>
+        <li>Menu items are labeled as veg or non-veg. Cross-contamination may occur in our kitchen.</li>
+        <li>Customers with severe allergies are advised to contact us before ordering.</li>
+      </ul>
+    </div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-scale"></i> 8. Governing Law</h3>
+      <p>These Terms shall be governed by and interpreted in accordance with the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in Raipur, Chhattisgarh, India.</p>
+    </div>
+
+    <div class="tnc-section">
+      <h3><i class="ti ti-mail"></i> 9. Contact Us</h3>
+      <p>For any queries regarding these Terms, reach out to us:</p>
+      <ul>
+        <li><strong>Email:</strong> support@tildabite.in</li>
+        <li><strong>Phone:</strong> +91 98765 43210</li>
+        <li><strong>Address:</strong> Tulsi, Tilda, Raipur, Chhattisgarh – 493114</li>
+      </ul>
+    </div>
+
+    <div style="text-align:center;margin-top:32px">
+      <button class="auth-submit" style="max-width:300px;margin:0 auto" onclick="showView(previousView||'auth')">← Back to Sign Up</button>
+    </div>
   </div>
 </div>
 
@@ -388,10 +553,34 @@
     <div class="cart-items" id="cart-items-list"></div>
     <div class="cart-footer" id="cart-footer" style="display:none">
       <div class="delivery-info"><i class="ti ti-truck"></i> Free delivery · Est. 30-40 min</div>
+      <div class="min-order-warn" id="min-order-warn"><i class="ti ti-alert-circle"></i> <span id="min-order-msg">Minimum order ₹99</span></div>
       <div class="cart-total-row"><span style="color:var(--text2)">Subtotal</span><span id="cart-subtotal">₹0</span></div>
       <div class="cart-total-row"><span style="color:var(--text2)">Taxes (5%)</span><span id="cart-tax">₹0</span></div>
       <div class="cart-total-row grand"><span>Total</span><span id="cart-total">₹0</span></div>
       <button class="checkout-btn" onclick="goCheckout()">Proceed to checkout →</button>
+    </div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD MODAL -->
+<div class="forgot-modal" id="forgot-modal" onclick="if(event.target===this)closeForgotModal()">
+  <div class="forgot-card">
+    <div id="forgot-step-1">
+      <h3>🔑 Reset Password</h3>
+      <p>Enter the email address you used to sign up. We'll send a reset link to that email.</p>
+      <div class="form-group"><label>Email address</label><input type="email" id="forgot-email" placeholder="you@example.com"></div>
+      <div class="forgot-actions">
+        <button class="forgot-cancel" onclick="closeForgotModal()">Cancel</button>
+        <button class="forgot-submit" onclick="handleForgotPassword()">Send reset link</button>
+      </div>
+    </div>
+    <div id="forgot-step-2" style="display:none">
+      <div class="forgot-success">
+        <i class="ti ti-mail-check"></i>
+        <div style="font-size:17px;font-weight:700;margin-bottom:8px">Check your email!</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">A password reset link has been sent to <strong id="forgot-sent-to"></strong>.<br>Check your inbox (and spam folder).</div>
+        <button class="forgot-submit" style="width:100%;margin-top:20px;padding:12px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:600" onclick="closeForgotModal()">Done</button>
+      </div>
     </div>
   </div>
 </div>
@@ -585,6 +774,8 @@ function updateCartUI(){
   renderCartDrawer();
 }
 
+const MIN_ORDER = 99; // ₹ minimum order value
+
 function renderCartDrawer(){
   const list = document.getElementById('cart-items-list');
   const footer = document.getElementById('cart-footer');
@@ -611,6 +802,22 @@ function renderCartDrawer(){
   document.getElementById('cart-subtotal').textContent='₹'+sub;
   document.getElementById('cart-tax').textContent='₹'+tax;
   document.getElementById('cart-total').textContent='₹'+(sub+tax);
+  // Minimum order check
+  const warn = document.getElementById('min-order-warn');
+  const btn  = document.querySelector('.checkout-btn');
+  if(sub < MIN_ORDER){
+    const rem = MIN_ORDER - sub;
+    document.getElementById('min-order-msg').textContent = `Add ₹${rem} more to place order (min ₹${MIN_ORDER})`;
+    warn.classList.add('show');
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    warn.classList.remove('show');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
 }
 
 function openCart(){document.getElementById('cart-overlay').classList.add('open');}
@@ -619,6 +826,9 @@ function closeCartIfOutside(e){if(e.target===document.getElementById('cart-overl
 
 function goCheckout(){
   if(!requireAuth('checkout')) return;
+  const keys = Object.keys(cart).filter(k=>cart[k]>0);
+  const sub = keys.reduce((s,k)=>{const i=MENU.find(m=>m.id==k);return s+i.price*cart[k];},0);
+  if(sub < MIN_ORDER){ showToast(`Minimum order is ₹${MIN_ORDER}. Add ₹${MIN_ORDER-sub} more!`); return; }
   closeCart();
   renderCheckout();
   showView('checkout');
@@ -744,7 +954,9 @@ function renderOrders(){
   }).join('');
 }
 
+let previousView = 'auth';
 function showView(v){
+  previousView = document.querySelector('.view.active')?.id?.replace('view-','') || 'auth';
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   window.scrollTo(0,0);
@@ -764,39 +976,99 @@ function toggleAuth(){
   document.getElementById('auth-switch').innerHTML  = isLogin?`Don't have an account? <a onclick="toggleAuth()">Sign up</a>`:`Already have an account? <a onclick="toggleAuth()">Sign in</a>`;
   document.getElementById('signup-fields').style.display = isLogin?'none':'block';
   document.getElementById('login-fields').style.display  = isLogin?'block':'none';
+  document.getElementById('terms-row').style.display = isLogin?'none':'flex';
+  // Reset captcha & failed attempts on mode switch
+  failedAttempts = 0;
+  document.getElementById('captcha-box').classList.remove('visible');
 }
 
 function getAccounts(){ try{ return JSON.parse(localStorage.getItem('tildabite_accounts')||'{}'); }catch(e){return {};} }
 function saveAccounts(a){ localStorage.setItem('tildabite_accounts', JSON.stringify(a)); }
 
+// ── CAPTCHA & FAILED ATTEMPTS ───────────────────────────────
+let failedAttempts = 0;
+let captchaA = 0, captchaB = 0;
+const CAPTCHA_THRESHOLD = 5;
+
+function generateCaptcha(){
+  captchaA = Math.floor(Math.random()*10)+1;
+  captchaB = Math.floor(Math.random()*10)+1;
+  document.getElementById('captcha-a').textContent = captchaA;
+  document.getElementById('captcha-b').textContent = captchaB;
+  document.getElementById('captcha-answer').value = '';
+  document.getElementById('captcha-error').classList.remove('show');
+}
+
+function showCaptcha(){
+  const box = document.getElementById('captcha-box');
+  if(!box.classList.contains('visible')){
+    box.classList.add('visible');
+    generateCaptcha();
+  }
+}
+
+function verifyCaptcha(){
+  const ans = parseInt(document.getElementById('captcha-answer').value);
+  if(isNaN(ans) || ans !== captchaA + captchaB){
+    document.getElementById('captcha-error').classList.add('show');
+    generateCaptcha();
+    return false;
+  }
+  return true;
+}
+
 function handleAuth(){
   const accounts = getAccounts();
+
+  // ── CAPTCHA CHECK (after threshold attempts) ──
+  if(failedAttempts >= CAPTCHA_THRESHOLD){
+    if(!verifyCaptcha()) return;
+  }
+
   if(authMode === 'signup'){
     const email = document.getElementById('auth-email').value.trim().toLowerCase();
     const pass  = document.getElementById('auth-pass').value;
     const name  = document.getElementById('auth-name').value.trim();
     const phone = document.getElementById('auth-phone').value.trim();
-    if(!email){ showToast('Please enter your email'); return; }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Please enter a valid email address'); return; }
-    if(!pass || pass.length < 6){ showToast('Password must be at least 6 characters'); return; }
-    if(!name){ showToast('Please enter your full name'); return; }
-    if(accounts[email]){ showToast('Account already exists. Please sign in.'); return; }
+
+    // ── TERMS CHECK ──
+    if(!document.getElementById('terms-checkbox').checked){
+      showToast('Please agree to the Terms & Conditions to continue');
+      failedAttempts++;
+      if(failedAttempts >= CAPTCHA_THRESHOLD) showCaptcha();
+      return;
+    }
+
+    if(!email){ showToast('Please enter your email'); failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Please enter a valid email address'); failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
+    if(!pass || pass.length < 6){ showToast('Password must be at least 6 characters'); failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
+    if(!name){ showToast('Please enter your full name'); failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
+    if(accounts[email]){ showToast('Account already exists. Please sign in.'); failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
+
     accounts[email] = { name, email, phone, password: pass };
     saveAccounts(accounts);
+    failedAttempts = 0;
+    document.getElementById('captcha-box').classList.remove('visible');
     showToast('Account created! Please sign in now.');
     setTimeout(()=>{ toggleAuth(); document.getElementById('login-identifier').value = email; }, 800);
     return;
   }
+
+  // ── LOGIN ──
   const identifier = document.getElementById('login-identifier').value.trim().toLowerCase();
   const pass       = document.getElementById('login-pass').value;
-  if(!identifier){ showToast('Please enter your email or mobile number'); return; }
-  if(!pass){ showToast('Please enter your password'); return; }
+  if(!identifier){ showToast('Please enter your email or mobile number'); failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
+  if(!pass){ showToast('Please enter your password'); failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
   let acc = accounts[identifier];
   if(!acc){
     acc = Object.values(accounts).find(a => a.phone && a.phone.replace(/\s/g,'') === identifier.replace(/\s/g,''));
   }
-  if(!acc){ showToast('No account found with that email or mobile number.'); return; }
-  if(acc.password !== pass){ showToast('Incorrect password. Please try again.'); document.getElementById('login-pass').value=''; return; }
+  if(!acc){ showToast('No account found with that email or mobile number.'); failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
+  if(acc.password !== pass){ showToast('Incorrect password. Please try again.'); document.getElementById('login-pass').value=''; failedAttempts++; if(failedAttempts>=CAPTCHA_THRESHOLD)showCaptcha(); return; }
+
+  // ── SUCCESS ──
+  failedAttempts = 0;
+  document.getElementById('captcha-box').classList.remove('visible');
   isLoggedIn = true;
   loggedInUser = { name: acc.name, email: acc.email };
   document.getElementById('auth-nav-label').textContent = acc.name.split(' ')[0];
@@ -832,6 +1104,35 @@ function signOut(){
   showToast('Signed out successfully');
   showView('auth');
   setActive(document.querySelectorAll('.bottom-nav-item')[0]);
+}
+
+// ── FORGOT PASSWORD ───────────────────────────────────────────
+function openForgotModal(){
+  document.getElementById('forgot-email').value='';
+  document.getElementById('forgot-step-1').style.display='block';
+  document.getElementById('forgot-step-2').style.display='none';
+  document.getElementById('forgot-modal').classList.add('open');
+}
+
+function closeForgotModal(){
+  document.getElementById('forgot-modal').classList.remove('open');
+}
+
+function handleForgotPassword(){
+  const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    showToast('Please enter a valid email address'); return;
+  }
+  const accounts = getAccounts();
+  // Always show success (don't reveal if account exists — security best practice)
+  document.getElementById('forgot-sent-to').textContent = email;
+  document.getElementById('forgot-step-1').style.display='none';
+  document.getElementById('forgot-step-2').style.display='block';
+  // If account exists, log it (in real app: send email via Supabase)
+  if(accounts[email]){
+    console.info('[TildaBite] Password reset requested for:', email);
+    // TODO: integrate sb.auth.resetPasswordForEmail(email) when Supabase is connected
+  }
 }
 
 let toastTimer;
