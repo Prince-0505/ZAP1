@@ -350,8 +350,16 @@ function adminLogin(){
   errEl.style.display='none';
   document.getElementById('admin-login-screen').style.display='none';
   document.getElementById('admin-shell').style.display='flex';
-  adminRefreshOrders(); renderRiders(); renderNotifLog(); renderMenuMgmt();
-  setInterval(adminRefreshOrders, 5000);
+  // Load from Supabase on login
+  adminRefreshOrders();
+  adminLoadRidersFromSupabase();
+  renderNotifLog(); renderMenuMgmt();
+  // Refresh every 8 seconds
+  setInterval(adminRefreshOrders, 8000);
+  // Realtime subscription
+  sb.channel('admin-orders-live')
+    .on('postgres_changes', {event:'*', schema:'public', table:'orders'}, ()=>{ adminRefreshOrders(); })
+    .subscribe();
   toast('Welcome back, Admin! 👋');
 }
 
@@ -377,12 +385,40 @@ function recomputeRiderOrderCounts(){
   RIDERS.forEach(r=>{ r.orders = ORDERS.filter(o=>o.rider_id===r.id && o.status==='otw').length; });
 }
 
-function adminRefreshOrders(){
-  const raw = loadOrdersFromStore();
-  ORDERS = raw.map(o=>({id:o.id,customer:o.customer,time:o.time||'—',amount:o.total,status:o.status,rider:o.rider||null,rider_id:o.rider_id||null,otp:o.otp||null,address:o.address||'—',items:o.items||[]}));
-  recomputeRiderOrderCounts();
-  renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders();
-  if(document.getElementById('view-menu-mgmt')?.classList.contains('active')) renderMenuMgmt();
+async function adminRefreshOrders(){
+  try {
+    const { data, error } = await sb.from('orders').select('*').order('created_at', {ascending: false});
+    if(error){ console.error('Supabase orders error:', error); return; }
+    ORDERS = data.map(o=>({
+      id: o.id,
+      customer: o.customer_name || '—',
+      time: new Date(o.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
+      amount: o.total,
+      status: o.status,
+      rider: o.rider_name || null,
+      rider_id: o.rider_id || null,
+      otp: o.delivery_otp || null,
+      address: o.delivery_address || '—',
+      items: Array.isArray(o.items) ? o.items.map(i=>i.name+' ×'+i.qty) : []
+    }));
+    recomputeRiderOrderCounts();
+    renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders();
+    if(document.getElementById('view-menu-mgmt')?.classList.contains('active')) renderMenuMgmt();
+  } catch(e){ console.error('adminRefreshOrders error:', e); }
+}
+
+async function adminLoadRidersFromSupabase(){
+  try {
+    const { data, error } = await sb.from('riders').select('*').order('name');
+    if(error || !data || data.length === 0) return; // keep local RIDERS if none in DB
+    RIDERS = data.map(r=>({
+      id: r.id, name: r.name, phone: r.phone,
+      status: r.status, rating: r.rating,
+      deliveries: r.total_deliveries || 0, orders: 0
+    }));
+    recomputeRiderOrderCounts();
+    renderRiders();
+  } catch(e){ console.error('adminLoadRidersFromSupabase error:', e); }
 }
 
 function statusBadge(s){
@@ -402,17 +438,22 @@ function renderAllOrders(){ const filtered=currentFilter==='all'?ORDERS:ORDERS.f
 function filterOrders(f,btn){ currentFilter=f; document.querySelectorAll('#order-filters .filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderAllOrders(); }
 function openAssign(orderId){ assigningOrder=orderId; document.getElementById('modal-order-label').textContent='Assigning rider for '+orderId; populateRiderSelect(); document.getElementById('assign-modal').classList.remove('hidden'); }
 function closeModal(){ document.getElementById('assign-modal').classList.add('hidden'); assigningOrder=null; }
-function confirmAssign(){
+async function confirmAssign(){
   const sel=document.getElementById('rider-select');
   if(!sel.value){toast('Select a rider first');return;}
   const riderId=sel.value; const riderName=sel.options[sel.selectedIndex].text.split(' (')[0];
-  const all=loadOrdersFromStore(); const idx=all.findIndex(x=>x.id===assigningOrder);
-  const assignOtp=String(Math.floor(1000+Math.random()*9000));if(idx>-1){all[idx].status='otw';all[idx].rider=riderName;all[idx].rider_id=riderId;if(!all[idx].otp)all[idx].otp=assignOtp;}
-  saveOrdersToStore(all);
-  const o=ORDERS.find(x=>x.id===assigningOrder); if(o){o.status='otw';o.rider=riderName;o.rider_id=riderId;}
-  recomputeRiderOrderCounts();
-  renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders(); closeModal();
-  toast('Rider assigned! Customer OTP is visible on their orders page.');
+  const assignOtp=String(Math.floor(1000+Math.random()*9000));
+  try {
+    const { error } = await sb.from('orders').update({
+      rider_id: riderId, rider_name: riderName,
+      status: 'otw', delivery_otp: assignOtp
+    }).eq('id', assigningOrder);
+    if(error){ toast('\u274c '+error.message); return; }
+    await sb.from('riders').update({ status: 'busy' }).eq('id', riderId);
+    toast('Rider assigned! OTP: '+assignOtp);
+    closeModal();
+    adminRefreshOrders();
+  } catch(e){ toast('\u274c Error: '+e.message); }
 }
 function populateRiderSelect(){ const sel=document.getElementById('rider-select'); recomputeRiderOrderCounts(); sel.innerHTML='<option value="">Choose a rider...</option>'+RIDERS.map(r=>'<option value="'+r.id+'">'+r.name+' (⭐'+r.rating+')'+(r.orders>0?' — '+r.orders+' active':' — free')+'</option>').join(''); }
 function renderRiders(){ document.getElementById('riders-grid').innerHTML=RIDERS.map(r=>'<div class="rider-card"><div class="rider-avatar">'+r.name.split(' ').map(w=>w[0]).join('')+'</div><div class="rider-name">'+r.name+'</div><div class="rider-phone"><i class="ti ti-phone" style="font-size:12px;margin-right:4px"></i>'+r.phone+'</div><div class="rider-stats"><div class="r-stat"><div class="r-stat-val">'+r.deliveries+'</div><div class="r-stat-label">Deliveries</div></div><div class="r-stat"><div class="r-stat-val">'+r.rating+'</div><div class="r-stat-label">Rating</div></div><div class="r-stat"><div class="r-stat-val">'+r.orders+'</div><div class="r-stat-label">Active</div></div></div><span class="rider-status '+(r.orders>0?'r-busy':'r-available')+'"><i class="ti ti-circle-filled" style="font-size:8px"></i>'+(r.orders>0?r.orders+' order'+(r.orders>1?'s':'')+' in progress':'No active orders')+'</span></div>').join(''); }
