@@ -84,6 +84,8 @@ async function loadMenuFromSupabase() {
 }
 
 // ── A6. Place Order ─────────────────────────────────────────
+const MIN_ORDER = 99; // ₹ minimum order value
+
 async function placeOrderSupabase(address, paymentMethod) {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return showToast('Please sign in first');
@@ -96,6 +98,13 @@ async function placeOrderSupabase(address, paymentMethod) {
   });
 
   const sub  = keys.reduce((s,k) => { const i=MENU.find(m=>m.id==k); return s+i.price*cart[k]; }, 0);
+
+  // ── MINIMUM ORDER CHECK ──
+  if (sub < MIN_ORDER) {
+    showToast(`Minimum order is ₹${MIN_ORDER}. Add ₹${MIN_ORDER - sub} more!`);
+    return;
+  }
+
   const tax  = Math.round(sub * 0.05);
   const otp  = String(Math.floor(1000 + Math.random() * 9000));
 
@@ -118,6 +127,15 @@ async function placeOrderSupabase(address, paymentMethod) {
   updateCartUI();
   loadUserOrders();
   setTimeout(() => showView('orders'), 1200);
+}
+
+// ── A6b. Forgot / Reset Password ────────────────────────────
+async function resetPassword(email) {
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/reset-password.html'
+  });
+  if (error) return showToast('❌ ' + error.message);
+  showToast('Reset link sent! Check your email 📧');
 }
 
 // ── A7. Load User Orders ─────────────────────────────────────
