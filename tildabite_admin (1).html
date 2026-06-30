@@ -329,12 +329,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL  = 'https://xxqctsfrnynrfoldnahw.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cWN0c2ZybnlucmZvbGRuYWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTU5NjgsImV4cCI6MjA5NzM5MTk2OH0.9NbsyMz0Hfkb1KFbvStn6hUMRtRw9RJd9FTuiHOpsG8';
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
-</script>
+<script src="zapfood_supabase.js"></script>
 <script>
 const ADMIN_CREDENTIALS = { id: 'admin@tildabite.com', password: 'Admin@1234' };
 
@@ -350,16 +345,8 @@ function adminLogin(){
   errEl.style.display='none';
   document.getElementById('admin-login-screen').style.display='none';
   document.getElementById('admin-shell').style.display='flex';
-  // Load from Supabase on login
-  adminRefreshOrders();
-  adminLoadRidersFromSupabase();
-  renderNotifLog(); renderMenuMgmt();
-  // Refresh every 8 seconds
-  setInterval(adminRefreshOrders, 8000);
-  // Realtime subscription
-  sb.channel('admin-orders-live')
-    .on('postgres_changes', {event:'*', schema:'public', table:'orders'}, ()=>{ adminRefreshOrders(); })
-    .subscribe();
+  adminRefreshOrders(); renderRiders(); renderNotifLog(); renderMenuMgmt();
+  setInterval(adminRefreshOrders, 5000);
   toast('Welcome back, Admin! 👋');
 }
 
@@ -371,11 +358,7 @@ function adminSignOut(){
   toast('Signed out');
 }
 
-const RIDERS=[
-  {id:'rider-1',name:'Arjun Patel',phone:'98765 43210',rating:4.8,deliveries:142,orders:0},
-  {id:'rider-2',name:'Priya Singh',phone:'91234 56789',rating:4.6,deliveries:98,orders:0},
-  {id:'rider-3',name:'Ravi Kumar',phone:'99887 76655',rating:4.5,deliveries:201,orders:0},
-];
+var RIDERS=[];
 let ORDERS=[]; let currentFilter='all'; let assigningOrder=null; let notifLog=[]; let isDark=false;
 
 function loadOrdersFromStore(){ try{ return JSON.parse(localStorage.getItem('tildabite_orders')||'[]'); }catch(e){return [];} }
@@ -385,40 +368,12 @@ function recomputeRiderOrderCounts(){
   RIDERS.forEach(r=>{ r.orders = ORDERS.filter(o=>o.rider_id===r.id && o.status==='otw').length; });
 }
 
-async function adminRefreshOrders(){
-  try {
-    const { data, error } = await sb.from('orders').select('*').order('created_at', {ascending: false});
-    if(error){ console.error('Supabase orders error:', error); return; }
-    ORDERS = data.map(o=>({
-      id: o.id,
-      customer: o.customer_name || '—',
-      time: new Date(o.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
-      amount: o.total,
-      status: o.status,
-      rider: o.rider_name || null,
-      rider_id: o.rider_id || null,
-      otp: o.delivery_otp || null,
-      address: o.delivery_address || '—',
-      items: Array.isArray(o.items) ? o.items.map(i=>i.name+' ×'+i.qty) : []
-    }));
-    recomputeRiderOrderCounts();
-    renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders();
-    if(document.getElementById('view-menu-mgmt')?.classList.contains('active')) renderMenuMgmt();
-  } catch(e){ console.error('adminRefreshOrders error:', e); }
-}
-
-async function adminLoadRidersFromSupabase(){
-  try {
-    const { data, error } = await sb.from('riders').select('*').order('name');
-    if(error || !data || data.length === 0) return; // keep local RIDERS if none in DB
-    RIDERS = data.map(r=>({
-      id: r.id, name: r.name, phone: r.phone,
-      status: r.status, rating: r.rating,
-      deliveries: r.total_deliveries || 0, orders: 0
-    }));
-    recomputeRiderOrderCounts();
-    renderRiders();
-  } catch(e){ console.error('adminLoadRidersFromSupabase error:', e); }
+function adminRefreshOrders(){
+  const raw = loadOrdersFromStore();
+  ORDERS = raw.map(o=>({id:o.id,customer:o.customer,time:o.time||'—',amount:o.total,status:o.status,rider:o.rider||null,rider_id:o.rider_id||null,otp:o.otp||null,address:o.address||'—',items:o.items||[]}));
+  recomputeRiderOrderCounts();
+  renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders();
+  if(document.getElementById('view-menu-mgmt')?.classList.contains('active')) renderMenuMgmt();
 }
 
 function statusBadge(s){
@@ -438,22 +393,17 @@ function renderAllOrders(){ const filtered=currentFilter==='all'?ORDERS:ORDERS.f
 function filterOrders(f,btn){ currentFilter=f; document.querySelectorAll('#order-filters .filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderAllOrders(); }
 function openAssign(orderId){ assigningOrder=orderId; document.getElementById('modal-order-label').textContent='Assigning rider for '+orderId; populateRiderSelect(); document.getElementById('assign-modal').classList.remove('hidden'); }
 function closeModal(){ document.getElementById('assign-modal').classList.add('hidden'); assigningOrder=null; }
-async function confirmAssign(){
+function confirmAssign(){ const _sel=document.getElementById('rider-select'); if(_sel&&_sel.value&&window.assignRider){ window.assignRider(assigningOrder,_sel.value); closeModal(); return; }
   const sel=document.getElementById('rider-select');
   if(!sel.value){toast('Select a rider first');return;}
   const riderId=sel.value; const riderName=sel.options[sel.selectedIndex].text.split(' (')[0];
-  const assignOtp=String(Math.floor(1000+Math.random()*9000));
-  try {
-    const { error } = await sb.from('orders').update({
-      rider_id: riderId, rider_name: riderName,
-      status: 'otw', delivery_otp: assignOtp
-    }).eq('id', assigningOrder);
-    if(error){ toast('\u274c '+error.message); return; }
-    await sb.from('riders').update({ status: 'busy' }).eq('id', riderId);
-    toast('Rider assigned! OTP: '+assignOtp);
-    closeModal();
-    adminRefreshOrders();
-  } catch(e){ toast('\u274c Error: '+e.message); }
+  const all=loadOrdersFromStore(); const idx=all.findIndex(x=>x.id===assigningOrder);
+  const assignOtp=String(Math.floor(1000+Math.random()*9000));if(idx>-1){all[idx].status='otw';all[idx].rider=riderName;all[idx].rider_id=riderId;if(!all[idx].otp)all[idx].otp=assignOtp;}
+  saveOrdersToStore(all);
+  const o=ORDERS.find(x=>x.id===assigningOrder); if(o){o.status='otw';o.rider=riderName;o.rider_id=riderId;}
+  recomputeRiderOrderCounts();
+  renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders(); closeModal();
+  toast('Rider assigned! Customer OTP is visible on their orders page.');
 }
 function populateRiderSelect(){ const sel=document.getElementById('rider-select'); recomputeRiderOrderCounts(); sel.innerHTML='<option value="">Choose a rider...</option>'+RIDERS.map(r=>'<option value="'+r.id+'">'+r.name+' (⭐'+r.rating+')'+(r.orders>0?' — '+r.orders+' active':' — free')+'</option>').join(''); }
 function renderRiders(){ document.getElementById('riders-grid').innerHTML=RIDERS.map(r=>'<div class="rider-card"><div class="rider-avatar">'+r.name.split(' ').map(w=>w[0]).join('')+'</div><div class="rider-name">'+r.name+'</div><div class="rider-phone"><i class="ti ti-phone" style="font-size:12px;margin-right:4px"></i>'+r.phone+'</div><div class="rider-stats"><div class="r-stat"><div class="r-stat-val">'+r.deliveries+'</div><div class="r-stat-label">Deliveries</div></div><div class="r-stat"><div class="r-stat-val">'+r.rating+'</div><div class="r-stat-label">Rating</div></div><div class="r-stat"><div class="r-stat-val">'+r.orders+'</div><div class="r-stat-label">Active</div></div></div><span class="rider-status '+(r.orders>0?'r-busy':'r-available')+'"><i class="ti ti-circle-filled" style="font-size:8px"></i>'+(r.orders>0?r.orders+' order'+(r.orders>1?'s':'')+' in progress':'No active orders')+'</span></div>').join(''); }
@@ -461,22 +411,11 @@ function renderNotifLog(){ const icons={order:'ti-package',promo:'ti-speakerphon
 function sendNotification(){ const title=document.getElementById('notif-title').value.trim(); const msg=document.getElementById('notif-msg').value.trim(); const target=document.getElementById('notif-target').value; if(!title||!msg){toast('Fill in title and message');return;} notifLog.unshift({type:'order',title,msg,time:'now',target}); renderNotifLog(); document.getElementById('notif-title').value=''; document.getElementById('notif-msg').value=''; toast('Notification sent!'); }
 // ─── SHARED MENU STORAGE (instantly reflects on customer app) ───
 const MENU_KEY = 'tildabite_menu';
-const DEFAULT_MENU = [
-  {id:1,name:'Chicken Dum Biryani',desc:'Slow-cooked basmati rice with tender chicken & secret spices',price:199,cat:'biryani',emoji:'🍛',veg:false,image:'',stock:null,oos:false,bestseller:true,sold:0,active:true},
-  {id:2,name:'Veg Biryani',desc:'Fragrant basmati with mixed vegetables & caramelised onions',price:149,cat:'biryani',emoji:'🫕',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
-  {id:3,name:'Mutton Biryani',desc:'Premium mutton slow-cooked in a sealed handi for 3 hours',price:249,cat:'biryani',emoji:'🍛',veg:false,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
-  {id:4,name:'Chicken Masala & Roti Box',desc:'Thick chicken curry with 4 hot rotis & pickle',price:179,cat:'chicken',emoji:'🍗',veg:false,image:'',stock:null,oos:false,bestseller:true,sold:0,active:true},
-  {id:5,name:'Butter Chicken Box',desc:'Creamy tomato-based curry with tandoori chicken pieces',price:189,cat:'chicken',emoji:'🍗',veg:false,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
-  {id:6,name:'Chhole Bhature',desc:'Punjabi chhole with 2 fluffy bhaturas & onion rings',price:129,cat:'veg',emoji:'🫘',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
-  {id:7,name:'Paneer Tikka Box',desc:'Smoky marinated paneer with mint chutney & roti',price:159,cat:'veg',emoji:'🧀',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
-  {id:8,name:'Burger (Veg)',desc:'Crispy aloo tikki burger with chipotle mayo & fresh veggies',price:89,cat:'snacks',emoji:'🍔',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
-  {id:9,name:'Cold Coffee',desc:'Rich cold brew with milk & vanilla ice cream',price:79,cat:'drinks',emoji:'☕',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
-  {id:10,name:'Mojito (Mint)',desc:'Fresh mint, lime & soda – refreshingly light',price:69,cat:'drinks',emoji:'🍹',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
-];
+const DEFAULT_MENU = [];
 let MENU_ITEMS = [];
 let editingMenuId = null;
 
-function loadMenu(){
+function loadMenu(){ if(window.MENU_ITEMS&&window.MENU_ITEMS.length){MENU_ITEMS=window.MENU_ITEMS;return;}
   try { const raw = JSON.parse(localStorage.getItem(MENU_KEY)||'null'); if(Array.isArray(raw)&&raw.length){ MENU_ITEMS = raw; return; } } catch(e){}
   MENU_ITEMS = JSON.parse(JSON.stringify(DEFAULT_MENU));
   saveMenu();
