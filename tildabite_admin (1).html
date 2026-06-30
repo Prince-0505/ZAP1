@@ -358,7 +358,11 @@ function adminSignOut(){
   toast('Signed out');
 }
 
-var RIDERS=[];
+const RIDERS=[
+  {id:'rider-1',name:'Arjun Patel',phone:'98765 43210',rating:4.8,deliveries:142,orders:0},
+  {id:'rider-2',name:'Priya Singh',phone:'91234 56789',rating:4.6,deliveries:98,orders:0},
+  {id:'rider-3',name:'Ravi Kumar',phone:'99887 76655',rating:4.5,deliveries:201,orders:0},
+];
 let ORDERS=[]; let currentFilter='all'; let assigningOrder=null; let notifLog=[]; let isDark=false;
 
 function loadOrdersFromStore(){ try{ return JSON.parse(localStorage.getItem('tildabite_orders')||'[]'); }catch(e){return [];} }
@@ -393,7 +397,7 @@ function renderAllOrders(){ const filtered=currentFilter==='all'?ORDERS:ORDERS.f
 function filterOrders(f,btn){ currentFilter=f; document.querySelectorAll('#order-filters .filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderAllOrders(); }
 function openAssign(orderId){ assigningOrder=orderId; document.getElementById('modal-order-label').textContent='Assigning rider for '+orderId; populateRiderSelect(); document.getElementById('assign-modal').classList.remove('hidden'); }
 function closeModal(){ document.getElementById('assign-modal').classList.add('hidden'); assigningOrder=null; }
-function confirmAssign(){ const _sel=document.getElementById('rider-select'); if(_sel&&_sel.value&&window.assignRider){ window.assignRider(assigningOrder,_sel.value); closeModal(); return; }
+function confirmAssign(){
   const sel=document.getElementById('rider-select');
   if(!sel.value){toast('Select a rider first');return;}
   const riderId=sel.value; const riderName=sel.options[sel.selectedIndex].text.split(' (')[0];
@@ -411,11 +415,22 @@ function renderNotifLog(){ const icons={order:'ti-package',promo:'ti-speakerphon
 function sendNotification(){ const title=document.getElementById('notif-title').value.trim(); const msg=document.getElementById('notif-msg').value.trim(); const target=document.getElementById('notif-target').value; if(!title||!msg){toast('Fill in title and message');return;} notifLog.unshift({type:'order',title,msg,time:'now',target}); renderNotifLog(); document.getElementById('notif-title').value=''; document.getElementById('notif-msg').value=''; toast('Notification sent!'); }
 // ─── SHARED MENU STORAGE (instantly reflects on customer app) ───
 const MENU_KEY = 'tildabite_menu';
-const DEFAULT_MENU = [];
+const DEFAULT_MENU = [
+  {id:1,name:'Chicken Dum Biryani',desc:'Slow-cooked basmati rice with tender chicken & secret spices',price:199,cat:'biryani',emoji:'🍛',veg:false,image:'',stock:null,oos:false,bestseller:true,sold:0,active:true},
+  {id:2,name:'Veg Biryani',desc:'Fragrant basmati with mixed vegetables & caramelised onions',price:149,cat:'biryani',emoji:'🫕',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:3,name:'Mutton Biryani',desc:'Premium mutton slow-cooked in a sealed handi for 3 hours',price:249,cat:'biryani',emoji:'🍛',veg:false,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:4,name:'Chicken Masala & Roti Box',desc:'Thick chicken curry with 4 hot rotis & pickle',price:179,cat:'chicken',emoji:'🍗',veg:false,image:'',stock:null,oos:false,bestseller:true,sold:0,active:true},
+  {id:5,name:'Butter Chicken Box',desc:'Creamy tomato-based curry with tandoori chicken pieces',price:189,cat:'chicken',emoji:'🍗',veg:false,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:6,name:'Chhole Bhature',desc:'Punjabi chhole with 2 fluffy bhaturas & onion rings',price:129,cat:'veg',emoji:'🫘',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:7,name:'Paneer Tikka Box',desc:'Smoky marinated paneer with mint chutney & roti',price:159,cat:'veg',emoji:'🧀',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:8,name:'Burger (Veg)',desc:'Crispy aloo tikki burger with chipotle mayo & fresh veggies',price:89,cat:'snacks',emoji:'🍔',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:9,name:'Cold Coffee',desc:'Rich cold brew with milk & vanilla ice cream',price:79,cat:'drinks',emoji:'☕',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:10,name:'Mojito (Mint)',desc:'Fresh mint, lime & soda – refreshingly light',price:69,cat:'drinks',emoji:'🍹',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+];
 let MENU_ITEMS = [];
 let editingMenuId = null;
 
-function loadMenu(){ if(window.MENU_ITEMS&&window.MENU_ITEMS.length){MENU_ITEMS=window.MENU_ITEMS;return;}
+function loadMenu(){
   try { const raw = JSON.parse(localStorage.getItem(MENU_KEY)||'null'); if(Array.isArray(raw)&&raw.length){ MENU_ITEMS = raw; return; } } catch(e){}
   MENU_ITEMS = JSON.parse(JSON.stringify(DEFAULT_MENU));
   saveMenu();
