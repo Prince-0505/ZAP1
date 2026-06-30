@@ -1,428 +1,431 @@
-// ============================================================
-// zapfood_supabase.js  — paste this ONCE in each HTML file
-// Replace YOUR_URL and YOUR_ANON_KEY with your Supabase project values
-// ============================================================
+/* ============================================================
+ * TildaBite — Live Supabase Integration Layer
+ * ONE file used by all 3 dashboards:
+ *   - customer_app.html
+ *   - admin_dashboard.html
+ *   - rider_dashboard.html
+ *
+ * It auto-detects which page it's running in, replaces local
+ * mock data with live Supabase reads/writes, and wires realtime
+ * so an order placed on the customer phone shows up in the
+ * admin laptop instantly (and vice-versa).
+ * ============================================================ */
 
-// ─── CONFIG ─────────────────────────────────────────────────
+/* ── CONFIG ────────────────────────────────────────────────── */
 const SUPABASE_URL  = 'https://xxqctsfrnynrfoldnahw.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cWN0c2ZybnlucmZvbGRuYWh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTU5NjgsImV4cCI6MjA5NzM5MTk2OH0.9NbsyMz0Hfkb1KFbvStn6hUMRtRw9RJd9FTuiHOpsG8';
 
-// Add this CDN in <head> of every HTML file:
-// <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-const { createClient } = supabase;
+const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+window.sb = sb;
 
-
-// ============================================================
-// A.  CUSTOMER APP  (food_ordering_app.html)
-// ============================================================
-
-// ── A1. Auth: Sign Up ────────────────────────────────────────
-async function handleSignUp(email, password, fullName, phone) {
-  const { data, error } = await sb.auth.signUp({
-    email, password,
-    options: { data: { full_name: fullName } }
-  });
-  if (error) return showToast('❌ ' + error.message);
-
-  // Save extra fields to profile
-  await sb.from('profiles').update({ phone, full_name: fullName })
-    .eq('id', data.user.id);
-
-  showToast('Account created! Welcome to ZapFood 🎉');
-  showView('menu');
+/* ── small helpers ────────────────────────────────────────── */
+function _toast(msg){
+  if (typeof window.showToast === 'function') return window.showToast(msg);
+  if (typeof window.toast === 'function')      return window.toast(msg);
+  console.log('[toast]', msg);
+}
+function _safe(fn){ if (typeof fn === 'function') try{ fn(); }catch(e){ console.error(e); } }
+function _detectPage(){
+  const t = (document.title || '').toLowerCase();
+  if (t.includes('admin'))  return 'admin';
+  if (t.includes('rider'))  return 'rider';
+  return 'customer';
 }
 
-// ── A2. Auth: Sign In ────────────────────────────────────────
-async function handleSignIn(email, password) {
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return showToast('❌ ' + error.message);
-  showToast('Signed in successfully! 🎉');
-  showView('menu');
-}
-
-// ── A3. Auth: Sign Out ───────────────────────────────────────
-async function handleSignOut() {
-  await sb.auth.signOut();
-  showToast('Signed out');
-  showView('auth');
-}
-
-// ── A4. Auth: Listen for session changes ────────────────────
-sb.auth.onAuthStateChange((_event, session) => {
-  if (session) {
-    // User is logged in — update nav button
-    document.getElementById('auth-nav-btn').textContent = '👤 Profile';
-  } else {
-    document.getElementById('auth-nav-btn').textContent = '🔑 Sign in';
-  }
-});
-
-// ── A5. Load Menu from Supabase ─────────────────────────────
-async function loadMenuFromSupabase() {
+/* ===========================================================
+ * CUSTOMER APP
+ * =========================================================== */
+async function customerLoadMenu(){
   const { data, error } = await sb.from('menu_items')
-    .select('*')
-    .eq('is_active', true)
-    .order('id');
-
-  if (error) { console.error(error); return; }
-
-  // Map Supabase rows → your existing MENU array format
-  const mapped = data.map(m => ({
-    id:       m.id,
-    name:     m.name,
-    desc:     m.description,
-    price:    m.price,
-    emoji:    m.emoji,
-    cat:      m.category,
-    veg:      m.is_veg
+    .select('*').eq('is_active', true).order('id');
+  if (error){ console.error(error); return; }
+  window.MENU = data.map(m => ({
+    id: m.id, name: m.name, desc: m.description || '',
+    price: m.price, emoji: m.emoji || '🍽️',
+    cat: m.category, veg: m.is_veg,
+    img: m.image_url || '',
+    oos: m.is_out_of_stock,
+    bestseller: m.is_bestseller
   }));
-
-  window.MENU = mapped;   // replace the hardcoded MENU constant
-  renderMenu(mapped);
+  _safe(() => window.renderMenu(window.MENU));
 }
 
-// ── A6. Place Order ─────────────────────────────────────────
-const MIN_ORDER = 99; // ₹ minimum order value
-
-async function placeOrderSupabase(address, paymentMethod) {
+async function customerLoadOrders(){
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) return showToast('Please sign in first');
+  if (!user){ window.SAMPLE_ORDERS = []; _safe(window.renderOrders); return; }
+  const { data, error } = await sb.from('orders')
+    .select('*').eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error){ console.error(error); return; }
+  window.SAMPLE_ORDERS = (data || []).map(o => ({
+    id: o.id,
+    date: new Date(o.created_at).toLocaleDateString('en-IN'),
+    status: o.status,
+    items: (o.items || []).map(i => `${i.name} ×${i.qty}`),
+    total: o.total,
+    otp: o.delivery_otp,
+    rider: o.rider_name
+  }));
+  _safe(window.renderOrders);
+}
 
-  // Build items array from cart
+async function customerPlaceOrder(){
+  const cart = window.cart || {};
+  const MENU = window.MENU || [];
   const keys = Object.keys(cart).filter(k => cart[k] > 0);
+  if (!keys.length) return _toast('Your cart is empty');
+
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return _toast('Please sign in first');
+
   const items = keys.map(k => {
-    const item = MENU.find(m => m.id == k);
-    return { id: item.id, name: item.name, qty: cart[k], price: item.price };
+    const it = MENU.find(m => String(m.id) === String(k));
+    return { id: it.id, name: it.name, qty: cart[k], price: it.price };
   });
+  const sub = items.reduce((s,i) => s + i.price * i.qty, 0);
+  const MIN_ORDER = 99;
+  if (sub < MIN_ORDER) return _toast(`Minimum order ₹${MIN_ORDER}. Add ₹${MIN_ORDER - sub} more`);
 
-  const sub  = keys.reduce((s,k) => { const i=MENU.find(m=>m.id==k); return s+i.price*cart[k]; }, 0);
-
-  // ── MINIMUM ORDER CHECK ──
-  if (sub < MIN_ORDER) {
-    showToast(`Minimum order is ₹${MIN_ORDER}. Add ₹${MIN_ORDER - sub} more!`);
-    return;
-  }
-
+  const addr = (document.getElementById('checkout-address')?.value
+             || document.getElementById('address')?.value
+             || 'Delivery address pending').trim();
+  const pay  = document.querySelector('input[name="pay"]:checked')?.value
+             || document.getElementById('pay-method')?.value
+             || 'razorpay';
   const tax  = Math.round(sub * 0.05);
   const otp  = String(Math.floor(1000 + Math.random() * 9000));
 
+  // grab profile for customer_name / phone
+  const { data: prof } = await sb.from('profiles').select('full_name,phone').eq('id', user.id).maybeSingle();
+
   const { data, error } = await sb.from('orders').insert({
     user_id:          user.id,
-    delivery_address: address,
-    items:            items,
-    subtotal:         sub,
-    tax:              tax,
-    total:            sub + tax,
-    payment_method:   paymentMethod,
+    customer_name:    prof?.full_name || user.email,
+    customer_phone:   prof?.phone     || '',
+    delivery_address: addr,
+    items, subtotal: sub, tax, total: sub + tax,
+    payment_method:   pay,
     delivery_otp:     otp,
     status:           'pending'
   }).select().single();
 
-  if (error) return showToast('❌ Order failed: ' + error.message);
+  if (error) return _toast('❌ ' + error.message);
 
-  showToast(`Order placed! Your OTP is ${otp} 🎉`);
-  cart = {};
-  updateCartUI();
-  loadUserOrders();
-  setTimeout(() => showView('orders'), 1200);
+  _toast(`Order ${data.id} placed! OTP: ${otp}`);
+  window.cart = {};
+  _safe(window.updateCartUI);
+  await customerLoadOrders();
+  if (typeof window.showView === 'function') window.showView('orders');
 }
 
-// ── A6b. Forgot / Reset Password ────────────────────────────
-async function resetPassword(email) {
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://xxqctsfrnynrfoldnahw.supabase.co/auth/v1/verify'
-  });
-  if (error) return showToast('❌ ' + error.message);
-  showToast('Reset link sent! Check your email 📧');
-}
-
-// ── A7. Load User Orders ─────────────────────────────────────
-async function loadUserOrders() {
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return;
-
-  const { data, error } = await sb.from('orders')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  if (error) return console.error(error);
-
-  // Map to existing renderOrders() format
-  const mapped = data.map(o => ({
-    id:     o.id,
-    date:   new Date(o.created_at).toLocaleDateString('en-IN'),
-    status: o.status,
-    items:  o.items.map(i => `${i.name} ×${i.qty}`),
-    total:  o.total,
-    otp:    o.delivery_otp
-  }));
-
-  window.SAMPLE_ORDERS = mapped;
-  renderOrders();
-}
-
-// ── A8. Realtime: Watch order status live ───────────────────
-function subscribeToMyOrders(userId) {
-  sb.channel('my-orders')
-    .on('postgres_changes', {
-      event:  'UPDATE',
-      schema: 'public',
-      table:  'orders',
-      filter: `user_id=eq.${userId}`
-    }, payload => {
-      const updated = payload.new;
-      showToast(`Order ${updated.id} is now: ${updated.status} 🚀`);
-      loadUserOrders();
-    })
+function customerRealtime(userId){
+  sb.channel('cust-orders-' + userId)
+    .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` },
+        payload => {
+          if (payload.eventType === 'UPDATE' && payload.new?.status) {
+            _toast(`Order ${payload.new.id}: ${payload.new.status}`);
+          }
+          customerLoadOrders();
+        })
+    .subscribe();
+  sb.channel('cust-menu')
+    .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_items' },
+        () => customerLoadMenu())
     .subscribe();
 }
 
+async function customerBootstrap(){
+  // override the in-page handlers
+  window.placeOrder    = customerPlaceOrder;
+  window.loadSharedMenu = customerLoadMenu;  // some buttons call this
+  // initial loads
+  await customerLoadMenu();
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user){
+    await customerLoadOrders();
+    customerRealtime(session.user.id);
+  }
+  sb.auth.onAuthStateChange(async (_e, s) => {
+    if (s?.user){ await customerLoadOrders(); customerRealtime(s.user.id); }
+    else        { window.SAMPLE_ORDERS = []; _safe(window.renderOrders); }
+  });
+}
 
-// ============================================================
-// B.  ADMIN DASHBOARD  (admin_dashboard.html)
-// ============================================================
-// NOTE: Admin operations use service role key (keep server-side!)
-// For this demo, use anon key + Supabase RLS disabled on admin panel
-// OR use Supabase Edge Functions for sensitive writes.
-
-// ── B1. Load All Orders ──────────────────────────────────────
-async function adminLoadOrders() {
+/* ===========================================================
+ * ADMIN DASHBOARD
+ * =========================================================== */
+async function adminLoadOrders(){
   const { data, error } = await sb.from('orders')
-    .select('*, riders(name)')
-    .order('created_at', { ascending: false });
-
-  if (error) return console.error(error);
-
-  window.ORDERS = data.map(o => ({
-    id:       o.id,
-    customer: o.customer_name,
-    time:     new Date(o.created_at).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}),
+    .select('*').order('created_at', { ascending: false });
+  if (error){ console.error(error); return; }
+  window.ORDERS = (data || []).map(o => ({
+    id: o.id,
+    customer: o.customer_name || '—',
+    phone:    o.customer_phone || '',
+    address:  o.delivery_address,
+    time:     new Date(o.created_at).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }),
     amount:   o.total,
     status:   o.status,
     rider:    o.rider_name || null,
-    rider_id: o.rider_id   || null
+    rider_id: o.rider_id   || null,
+    items:    (o.items || []).map(i => `${i.name} ×${i.qty}`).join(', '),
+    otp:      o.delivery_otp
   }));
-
-  renderAllOrders();
-  renderRecentOrders();
-  updateOverviewStats();
+  _safe(window.renderAllOrders);
+  _safe(window.renderRecentOrders);
+  _safe(window.updateOverviewStats);
 }
 
-// ── B2. Assign Rider ─────────────────────────────────────────
-async function adminAssignRider(orderId, riderId, riderName) {
-  const otp = String(Math.floor(1000 + Math.random() * 9000));
-
-  const { error } = await sb.from('orders').update({
-    rider_id:     riderId,
-    rider_name:   riderName,
-    status:       'otw',
-    delivery_otp: otp
-  }).eq('id', orderId);
-
-  if (error) return toast('❌ ' + error.message);
-
-  // Also update rider status to busy
-  await sb.from('riders').update({ status: 'busy' }).eq('id', riderId);
-
-  toast(`Rider assigned! OTP ${otp} sent to customer.`);
-  adminLoadOrders();
-  adminLoadRiders();
-}
-
-// ── B3. Load Riders ──────────────────────────────────────────
-async function adminLoadRiders() {
+async function adminLoadRiders(){
   const { data, error } = await sb.from('riders').select('*').order('name');
-  if (error) return console.error(error);
+  if (error){ console.error(error); return; }
 
-  window.RIDERS = data.map(r => ({
-    id:         r.id,
-    name:       r.name,
-    phone:      r.phone,
-    status:     r.status,
-    rating:     r.rating,
-    deliveries: r.total_deliveries,
-    orders:     r.status === 'busy' ? 1 : 0
-  }));
-
-  renderRiders();
-}
-
-// ── B4. Send Notification (save to DB) ───────────────────────
-async function adminSendNotification(type, title, message, target) {
-  const { error } = await sb.from('notifications').insert({
-    type, title, message, target
+  // active-order count per rider (from in-flight orders)
+  const active = {};
+  (window.ORDERS || []).forEach(o => {
+    if (o.rider_id && ['otw','preparing'].includes(o.status))
+      active[o.rider_id] = (active[o.rider_id] || 0) + 1;
   });
-  if (error) return toast('❌ ' + error.message);
-  toast('Notification saved & sent!');
-  adminLoadNotifications();
+
+  window.RIDERS = (data || []).map(r => ({
+    id: r.id, name: r.name, phone: r.phone,
+    status: r.status, rating: r.rating,
+    deliveries: r.total_deliveries,
+    orders: active[r.id] || 0
+  }));
+  _safe(window.renderRiders);
 }
 
-// ── B5. Load Notifications ───────────────────────────────────
-async function adminLoadNotifications() {
+async function adminLoadMenu(){
+  const { data, error } = await sb.from('menu_items').select('*').order('id');
+  if (error){ console.error(error); return; }
+  window.MENU_ITEMS = (data || []).map(m => ({
+    id: m.id, name: m.name, cat: m.category, price: m.price,
+    active: m.is_active, stock: m.stock_qty, sold: m.sold_count,
+    bestseller: m.is_bestseller, emoji: m.emoji
+  }));
+  _safe(window.renderMenuMgmt);
+}
+
+async function adminLoadNotifications(){
   const { data } = await sb.from('notifications')
     .select('*').order('created_at', { ascending: false }).limit(20);
-
-  window.notifLog = data.map(n => ({
-    type:  n.type,
-    title: n.title,
-    msg:   n.message,
-    time:  new Date(n.created_at).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}),
-    target:n.target
+  window.notifLog = (data || []).map(n => ({
+    type: n.type, title: n.title, msg: n.message,
+    time: new Date(n.created_at).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }),
+    target: n.target
   }));
-  renderNotifLog();
+  _safe(window.renderNotifLog);
 }
 
-// ── B6. Toggle Menu Item ─────────────────────────────────────
-async function adminToggleMenuItem(id, currentActive) {
-  const { error } = await sb.from('menu_items')
-    .update({ is_active: !currentActive }).eq('id', id);
-  if (error) return toast('❌ ' + error.message);
-  adminLoadMenuItems();
+async function adminAssignRider(orderId, riderId){
+  const rider = (window.RIDERS || []).find(r => r.id === riderId);
+  const otp   = String(Math.floor(1000 + Math.random() * 9000));
+  const { error } = await sb.from('orders').update({
+    rider_id: riderId, rider_name: rider?.name || null,
+    status: 'otw', delivery_otp: otp
+  }).eq('id', orderId);
+  if (error) return _toast('❌ ' + error.message);
+  await sb.from('riders').update({ status: 'busy' }).eq('id', riderId);
+  _toast(`Rider ${rider?.name} assigned · OTP ${otp}`);
 }
 
-// ── B7. Load Menu Items (admin) ──────────────────────────────
-async function adminLoadMenuItems() {
-  const { data } = await sb.from('menu_items').select('*').order('id');
-  window.MENU_ITEMS = data.map(m => ({
-    id:     m.id,
-    name:   m.name,
-    cat:    m.category,
-    price:  m.price,
-    active: m.is_active
-  }));
-  renderMenuMgmt();
+async function adminSendNotification(){
+  const title  = document.getElementById('notif-title')?.value.trim();
+  const msg    = document.getElementById('notif-msg')?.value.trim();
+  const target = document.getElementById('notif-target')?.value || 'all_customers';
+  if (!title || !msg) return _toast('Fill in title and message');
+  const { error } = await sb.from('notifications').insert({ type:'order', title, message: msg, target });
+  if (error) return _toast('❌ ' + error.message);
+  document.getElementById('notif-title').value = '';
+  document.getElementById('notif-msg').value   = '';
+  _toast('Notification sent');
 }
 
-// ── B8. Realtime: Watch new orders ───────────────────────────
-function adminSubscribeRealtime() {
-  sb.channel('admin-orders')
-    .on('postgres_changes', {
-      event:  '*',
-      schema: 'public',
-      table:  'orders'
-    }, () => {
-      adminLoadOrders();
-    })
+async function adminToggleMenuItem(id, active){
+  const { error } = await sb.from('menu_items').update({ is_active: !active }).eq('id', id);
+  if (error) return _toast('❌ ' + error.message);
+}
+
+function adminRealtime(){
+  sb.channel('adm-orders')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },
+        () => { adminLoadOrders().then(adminLoadRiders); })
     .subscribe();
-
-  sb.channel('admin-riders')
-    .on('postgres_changes', {
-      event:  'UPDATE',
-      schema: 'public',
-      table:  'riders'
-    }, () => {
-      adminLoadRiders();
-    })
+  sb.channel('adm-riders')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'riders' },
+        () => adminLoadRiders())
+    .subscribe();
+  sb.channel('adm-menu')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' },
+        () => adminLoadMenu())
+    .subscribe();
+  sb.channel('adm-notif')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' },
+        () => adminLoadNotifications())
     .subscribe();
 }
 
+async function adminBootstrap(){
+  // override anything the static HTML defines
+  window.adminRefreshOrders = adminLoadOrders;
+  window.assignRider        = adminAssignRider;
+  window.sendNotification   = adminSendNotification;
+  window.toggleMenuItem     = adminToggleMenuItem;
 
-// ============================================================
-// C.  RIDER DASHBOARD  (rider_dashboard.html)
-// ============================================================
-
-// ── C1. Rider Login (simple phone-based, or use Supabase Auth) ──
-// For demo: rider logs in with email/password (create rider auth accounts)
-async function riderSignIn(email, password) {
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return alert('Login failed: ' + error.message);
-  riderLoadData();
+  await adminLoadOrders();
+  await adminLoadRiders();
+  await adminLoadMenu();
+  await adminLoadNotifications();
+  adminRealtime();
 }
 
-// ── C2. Load Rider's Active Order ────────────────────────────
-async function riderLoadData() {
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return;
-
-  // Find rider by matching email (stored in riders table)
-  const { data: rider } = await sb.from('riders')
-    .select('*').eq('phone', user.email).single(); // or match by user metadata
-
-  if (!rider) return;
-
-  // Load active order assigned to this rider
-  const { data: active } = await sb.from('orders')
-    .select('*')
-    .eq('rider_id', rider.id)
-    .in('status', ['otw', 'assigned'])
-    .single();
-
-  if (active) {
-    window.order = {
-      id:       active.id,
-      customer: active.customer_name,
-      phone:    active.customer_phone,
-      items:    active.items.map(i => `${i.name} ×${i.qty}`).join(', '),
-      amount:   active.total,
-      address:  active.delivery_address,
-      otp:      active.delivery_otp,
-      stage:    active.status === 'otw' ? 'otw' : 'assigned'
-    };
-  } else {
-    window.order = null;
+/* ===========================================================
+ * RIDER DASHBOARD
+ * =========================================================== */
+async function riderResolveSelf(){
+  // Riders pick themselves from the in-page selector (id="rider-select")
+  // or auto-bind to the first rider for demo convenience.
+  const sel = document.getElementById('rider-select');
+  let id = sel?.value || localStorage.getItem('tildabite_rider_id');
+  if (!id){
+    const { data } = await sb.from('riders').select('id,name').order('name').limit(1);
+    id = data?.[0]?.id;
   }
+  if (id) localStorage.setItem('tildabite_rider_id', id);
+  return id;
+}
 
-  renderActive();
+async function riderLoadData(){
+  const riderId = await riderResolveSelf();
+  if (!riderId){ _toast('No rider configured'); return; }
+  window.RIDER_ID = riderId;
 
-  // Load delivery history
-  const { data: hist } = await sb.from('orders')
-    .select('id, customer_name, total')
-    .eq('rider_id', rider.id)
-    .eq('status', 'delivered')
+  // active order
+  const { data: active } = await sb.from('orders')
+    .select('*').eq('rider_id', riderId)
+    .in('status', ['otw','preparing'])
     .order('updated_at', { ascending: false })
-    .limit(10);
+    .limit(1).maybeSingle();
+
+  window.order = active ? {
+    id: active.id,
+    customer: active.customer_name || '—',
+    phone: active.customer_phone || '',
+    items: (active.items || []).map(i => `${i.name} ×${i.qty}`).join(', '),
+    amount: active.total,
+    address: active.delivery_address,
+    otp: active.delivery_otp,
+    stage: active.status === 'otw' ? 'otw' : 'assigned'
+  } : null;
+  _safe(window.renderActive);
+
+  // delivery history
+  const { data: hist } = await sb.from('orders')
+    .select('id, customer_name, total, updated_at')
+    .eq('rider_id', riderId).eq('status', 'delivered')
+    .order('updated_at', { ascending: false }).limit(10);
 
   window.history = (hist || []).map(h => ({
-    id:       h.id,
-    customer: h.customer_name,
-    amount:   h.total,
-    status:   'delivered'
+    id: h.id, customer: h.customer_name || '—',
+    amount: h.total, status: 'delivered'
   }));
-  renderHistory();
+  _safe(window.renderHistory);
 }
 
-// ── C3. Verify OTP & Complete Delivery ───────────────────────
-async function riderVerifyOtp(orderId, enteredOtp) {
-  // Fetch stored OTP
-  const { data: ord } = await sb.from('orders')
-    .select('delivery_otp').eq('id', orderId).single();
-
-  if (!ord || ord.delivery_otp !== enteredOtp) {
-    toast('Incorrect OTP — ask the customer again');
-    return;
-  }
-
-  // Mark delivered
-  await sb.from('orders').update({
-    status:       'delivered',
-    otp_verified: true
-  }).eq('id', orderId);
-
-  toast('Delivery confirmed! ✅');
-  closeOtp();
-  riderLoadData();
+async function riderVerifyOtp(){
+  const entered = (document.getElementById('otp-input')?.value || '').trim();
+  const o = window.order;
+  if (!o) return _toast('No active order');
+  if (entered !== o.otp) return _toast('Incorrect OTP');
+  await sb.from('orders').update({ status:'delivered', otp_verified:true }).eq('id', o.id);
+  await sb.from('riders').update({ status:'available' }).eq('id', window.RIDER_ID);
+  _toast('Delivered ✅');
+  if (typeof window.closeOtp === 'function') window.closeOtp();
+  await riderLoadData();
 }
 
-// ── C4. Update Rider Status ───────────────────────────────────
-async function riderUpdateStatus(riderId, newStatus) {
-  await sb.from('riders').update({ status: newStatus }).eq('id', riderId);
-  toast('Status set to ' + newStatus);
+async function riderSetStatus(newStatus){
+  if (!window.RIDER_ID) return;
+  await sb.from('riders').update({ status: newStatus }).eq('id', window.RIDER_ID);
+  _toast('Status: ' + newStatus);
 }
 
-// ── C5. Realtime: Watch for new assignment ───────────────────
-function riderSubscribeRealtime(riderId) {
-  sb.channel('rider-orders-' + riderId)
-    .on('postgres_changes', {
-      event:  'UPDATE',
-      schema: 'public',
-      table:  'orders',
-      filter: `rider_id=eq.${riderId}`
-    }, () => {
-      riderLoadData();
-      toast('New order assigned! 🛵');
-    })
+function riderRealtime(){
+  const id = window.RIDER_ID;
+  if (!id) return;
+  sb.channel('rdr-' + id)
+    .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `rider_id=eq.${id}` },
+        () => { _toast('Order update 🛵'); riderLoadData(); })
     .subscribe();
 }
+
+async function riderBootstrap(){
+  // populate rider picker so the demo can swap riders quickly
+  const sel = document.getElementById('rider-select');
+  if (sel){
+    const { data } = await sb.from('riders').select('id,name').order('name');
+    sel.innerHTML = (data || []).map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    const saved = localStorage.getItem('tildabite_rider_id');
+    if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
+    sel.addEventListener('change', async () => {
+      localStorage.setItem('tildabite_rider_id', sel.value);
+      await riderLoadData(); riderRealtime();
+    });
+  }
+
+  window.loadRiderData = riderLoadData;
+  window.verifyOtp     = riderVerifyOtp;
+  window.setRiderStatus = riderSetStatus;
+
+  await riderLoadData();
+  riderRealtime();
+}
+
+/* ===========================================================
+ * AUTH (shared, customer-focused)
+ * =========================================================== */
+window.tbAuth = {
+  signUp: async (email, password, full_name, phone) => {
+    const { data, error } = await sb.auth.signUp({
+      email, password,
+      options: { data: { full_name } }
+    });
+    if (error){ _toast('❌ ' + error.message); return null; }
+    if (data.user) {
+      await sb.from('profiles').update({ phone, full_name }).eq('id', data.user.id);
+    }
+    _toast('Account created 🎉');
+    return data;
+  },
+  signIn: async (email, password) => {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error){ _toast('❌ ' + error.message); return false; }
+    _toast('Signed in');
+    return true;
+  },
+  signOut: async () => { await sb.auth.signOut(); _toast('Signed out'); },
+  resetPassword: async (email) => {
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/reset-password.html'
+    });
+    if (error) return _toast('❌ ' + error.message);
+    _toast('Reset link sent 📧');
+  }
+};
+
+/* ===========================================================
+ * AUTO-BOOTSTRAP
+ * =========================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+  const page = _detectPage();
+  window.__tbPage = page;
+  console.log('[TildaBite] page =', page);
+  if (page === 'admin')    return adminBootstrap();
+  if (page === 'rider')    return riderBootstrap();
+  return customerBootstrap();
+});
