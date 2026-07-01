@@ -329,45 +329,24 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="zapfood_supabase.js"></script>
 <script>
-// ═══════════════════════════════════════════════════════════
-//  ADMIN DASHBOARD — Supabase-powered (real-time)
-// ═══════════════════════════════════════════════════════════
-
 const ADMIN_CREDENTIALS = { id: 'admin@tildabite.com', password: 'Admin@1234' };
-let ORDERS = [];
-let RIDERS = [];
-let MENU_ITEMS = [];
-let currentFilter = 'all';
-let assigningOrder = null;
-let notifLog = [];
-let isDark = false;
-let editingMenuId = null;
-let tTimer;
 
-function toast(msg){ clearTimeout(tTimer); document.getElementById('tmsg').textContent=msg; document.getElementById('toast').classList.add('show'); tTimer=setTimeout(()=>document.getElementById('toast').classList.remove('show'),2400); }
-function toggleTheme(){ isDark=!isDark; document.body.classList.toggle('dark',isDark); document.getElementById('theme-icon').className=isDark?'ti ti-sun':'ti ti-moon'; }
-
-// ── ADMIN LOGIN ───────────────────────────────────────────────
 function adminLogin(){
   const id   = document.getElementById('admin-id-input').value.trim().toLowerCase();
   const pass = document.getElementById('admin-pass-input').value;
   const errEl = document.getElementById('admin-login-error');
-  if(!id||!pass){ errEl.textContent='Please enter both Admin ID and password.'; errEl.style.display='block'; return; }
-  if(id!==ADMIN_CREDENTIALS.id||pass!==ADMIN_CREDENTIALS.password){
+  if(!id || !pass){ errEl.textContent='Please enter both Admin ID and password.'; errEl.style.display='block'; return; }
+  if(id !== ADMIN_CREDENTIALS.id || pass !== ADMIN_CREDENTIALS.password){
     errEl.textContent='Invalid Admin ID or password. Access denied.'; errEl.style.display='block';
     document.getElementById('admin-pass-input').value=''; return;
   }
   errEl.style.display='none';
   document.getElementById('admin-login-screen').style.display='none';
   document.getElementById('admin-shell').style.display='flex';
-  adminRefreshOrders();
-  adminLoadRiders();
-  adminLoadMenuItems();
-  renderNotifLog();
-  adminSubscribeRealtime();
+  adminRefreshOrders(); renderRiders(); renderNotifLog(); renderMenuMgmt();
+  setInterval(adminRefreshOrders, 5000);
   toast('Welcome back, Admin! 👋');
 }
 
@@ -376,206 +355,142 @@ function adminSignOut(){
   document.getElementById('admin-login-screen').style.display='flex';
   document.getElementById('admin-id-input').value='';
   document.getElementById('admin-pass-input').value='';
+  toast('Signed out');
 }
 
-// ── ORDERS ───────────────────────────────────────────────────
-async function adminRefreshOrders(){
-  const { data, error } = await sb.from('orders')
-    .select('*, riders(name)')
-    .order('created_at', { ascending: false });
-  if(error){ console.error('Orders error:',error); toast('❌ Could not load orders'); return; }
+const RIDERS=[
+  {id:'rider-1',name:'Arjun Patel',phone:'98765 43210',rating:4.8,deliveries:142,orders:0},
+  {id:'rider-2',name:'Priya Singh',phone:'91234 56789',rating:4.6,deliveries:98,orders:0},
+  {id:'rider-3',name:'Ravi Kumar',phone:'99887 76655',rating:4.5,deliveries:201,orders:0},
+];
+let ORDERS=[]; let currentFilter='all'; let assigningOrder=null; let notifLog=[]; let isDark=false;
 
-  ORDERS = data.map(o=>({
-    id:       o.id,
-    customer: o.customer_name || '(unknown)',
-    time:     new Date(o.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
-    date:     new Date(o.created_at).toLocaleDateString('en-IN'),
-    amount:   o.total,
-    status:   o.status,
-    rider:    o.rider_name || null,
-    rider_id: o.rider_id   || null,
-    otp:      o.delivery_otp || null,
-    address:  o.delivery_address || '—',
-    items:    Array.isArray(o.items) ? o.items.map(i=>`${i.name} ×${i.qty}`) : []
-  }));
+function loadOrdersFromStore(){ try{ return JSON.parse(localStorage.getItem('tildabite_orders')||'[]'); }catch(e){return [];} }
+function saveOrdersToStore(arr){ localStorage.setItem('tildabite_orders', JSON.stringify(arr)); }
 
-  renderAllOrders();
-  renderRecentOrders();
-  updateOverviewStats();
+function recomputeRiderOrderCounts(){
+  RIDERS.forEach(r=>{ r.orders = ORDERS.filter(o=>o.rider_id===r.id && o.status==='otw').length; });
+}
+
+function adminRefreshOrders(){
+  const raw = loadOrdersFromStore();
+  ORDERS = raw.map(o=>({id:o.id,customer:o.customer,time:o.time||'—',amount:o.total,status:o.status,rider:o.rider||null,rider_id:o.rider_id||null,otp:o.otp||null,address:o.address||'—',items:o.items||[]}));
+  recomputeRiderOrderCounts();
+  renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders();
+  if(document.getElementById('view-menu-mgmt')?.classList.contains('active')) renderMenuMgmt();
 }
 
 function statusBadge(s){
-  const map={
-    pending:  '<span class="status-badge s-pending"><i class="ti ti-clock" style="font-size:10px"></i>Pending</span>',
-    preparing:'<span class="status-badge s-otw"><i class="ti ti-chef-hat" style="font-size:10px"></i>Preparing</span>',
-    otw:      '<span class="status-badge s-otw"><i class="ti ti-motorbike" style="font-size:10px"></i>Out for delivery</span>',
-    delivered:'<span class="status-badge s-delivered"><i class="ti ti-check" style="font-size:10px"></i>Delivered</span>',
-    cancelled:'<span class="status-badge s-cancelled">Cancelled</span>'
-  };
+  const map={pending:'<span class="status-badge s-pending"><i class="ti ti-clock" style="font-size:10px"></i>Pending</span>',otw:'<span class="status-badge s-otw"><i class="ti ti-motorbike" style="font-size:10px"></i>Out for delivery</span>',delivered:'<span class="status-badge s-delivered"><i class="ti ti-check" style="font-size:10px"></i>Delivered</span>',cancelled:'<span class="status-badge s-cancelled">Cancelled</span>'};
   return map[s]||s;
 }
-
 function actionCell(o){
   if(o.status==='pending')return '<button class="assign-btn" onclick="openAssign(\''+o.id+'\')"><i class="ti ti-user-plus" style="font-size:12px"></i> Assign rider</button>';
-  if(o.status==='otw')return '<span class="assigned-pill"><i class="ti ti-circle-check" style="font-size:12px"></i>'+(o.rider||'Rider')+'</span>';
+  if(o.status==='otw')return '<span class="assigned-pill"><i class="ti ti-circle-check" style="font-size:12px"></i>'+o.rider+'</span>';
   return '<span style="font-size:11px;color:var(--text3)">Completed</span>';
 }
-
 function renderOrderRows(orders,targetId){
-  const el=document.getElementById(targetId); if(!el)return;
-  el.innerHTML=orders.map(o=>`<div class="table-row" id="row-${o.id}">
-    <div class="table-cell order-id-cell">${o.id}</div>
-    <div class="table-cell" style="overflow:hidden"><div style="font-weight:600;font-size:13px">${o.customer}</div><div style="font-size:11px;color:var(--text3)">${o.time}</div></div>
-    <div class="table-cell">₹${o.amount}</div>
-    <div class="table-cell">${statusBadge(o.status)}</div>
-    <div class="table-cell" style="font-size:12px;color:var(--text2)">${o.rider||'—'}</div>
-    <div class="table-cell">${actionCell(o)}</div>
-  </div>`).join('');
+  document.getElementById(targetId).innerHTML=orders.map(o=>'<div class="table-row" id="row-'+o.id+'"><div class="table-cell order-id-cell">'+o.id+'</div><div class="table-cell" style="overflow:hidden"><div style="font-weight:600;font-size:13px">'+o.customer+'</div><div style="font-size:11px;color:var(--text3)">'+o.time+'</div></div><div class="table-cell">₹'+o.amount+'</div><div class="table-cell">'+statusBadge(o.status)+'</div><div class="table-cell" style="font-size:12px;color:var(--text2)">'+(o.rider||'—')+'</div><div class="table-cell">'+actionCell(o)+'</div></div>').join('');
 }
-
-function renderRecentOrders(){ renderOrderRows(ORDERS.slice(0,5),'recent-orders-body'); }
-function renderAllOrders(){
-  const filtered=currentFilter==='all'?ORDERS:ORDERS.filter(o=>o.status===currentFilter);
-  renderOrderRows(filtered,'all-orders-body');
-}
+function renderRecentOrders(){renderOrderRows(ORDERS.slice(0,5),'recent-orders-body');}
+function renderAllOrders(){ const filtered=currentFilter==='all'?ORDERS:ORDERS.filter(o=>o.status===currentFilter); renderOrderRows(filtered,'all-orders-body'); }
 function filterOrders(f,btn){ currentFilter=f; document.querySelectorAll('#order-filters .filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderAllOrders(); }
-
-// ── ASSIGN RIDER ──────────────────────────────────────────────
 function openAssign(orderId){ assigningOrder=orderId; document.getElementById('modal-order-label').textContent='Assigning rider for '+orderId; populateRiderSelect(); document.getElementById('assign-modal').classList.remove('hidden'); }
 function closeModal(){ document.getElementById('assign-modal').classList.add('hidden'); assigningOrder=null; }
-
-function populateRiderSelect(){
+function confirmAssign(){
   const sel=document.getElementById('rider-select');
-  const activeOrders=ORDERS.filter(o=>o.status==='otw');
-  sel.innerHTML='<option value="">Choose a rider...</option>'+RIDERS.map(r=>{
-    const cnt=activeOrders.filter(o=>o.rider_id===r.id).length;
-    return `<option value="${r.id}">${r.name} (⭐${r.rating})${cnt>0?' — '+cnt+' active':' — free'}</option>`;
-  }).join('');
+  if(!sel.value){toast('Select a rider first');return;}
+  const riderId=sel.value; const riderName=sel.options[sel.selectedIndex].text.split(' (')[0];
+  const all=loadOrdersFromStore(); const idx=all.findIndex(x=>x.id===assigningOrder);
+  const assignOtp=String(Math.floor(1000+Math.random()*9000));if(idx>-1){all[idx].status='otw';all[idx].rider=riderName;all[idx].rider_id=riderId;if(!all[idx].otp)all[idx].otp=assignOtp;}
+  saveOrdersToStore(all);
+  const o=ORDERS.find(x=>x.id===assigningOrder); if(o){o.status='otw';o.rider=riderName;o.rider_id=riderId;}
+  recomputeRiderOrderCounts();
+  renderAllOrders();renderRecentOrders();updateOverviewStats();renderRiders(); closeModal();
+  toast('Rider assigned! Customer OTP is visible on their orders page.');
 }
+function populateRiderSelect(){ const sel=document.getElementById('rider-select'); recomputeRiderOrderCounts(); sel.innerHTML='<option value="">Choose a rider...</option>'+RIDERS.map(r=>'<option value="'+r.id+'">'+r.name+' (⭐'+r.rating+')'+(r.orders>0?' — '+r.orders+' active':' — free')+'</option>').join(''); }
+function renderRiders(){ document.getElementById('riders-grid').innerHTML=RIDERS.map(r=>'<div class="rider-card"><div class="rider-avatar">'+r.name.split(' ').map(w=>w[0]).join('')+'</div><div class="rider-name">'+r.name+'</div><div class="rider-phone"><i class="ti ti-phone" style="font-size:12px;margin-right:4px"></i>'+r.phone+'</div><div class="rider-stats"><div class="r-stat"><div class="r-stat-val">'+r.deliveries+'</div><div class="r-stat-label">Deliveries</div></div><div class="r-stat"><div class="r-stat-val">'+r.rating+'</div><div class="r-stat-label">Rating</div></div><div class="r-stat"><div class="r-stat-val">'+r.orders+'</div><div class="r-stat-label">Active</div></div></div><span class="rider-status '+(r.orders>0?'r-busy':'r-available')+'"><i class="ti ti-circle-filled" style="font-size:8px"></i>'+(r.orders>0?r.orders+' order'+(r.orders>1?'s':'')+' in progress':'No active orders')+'</span></div>').join(''); }
+function renderNotifLog(){ const icons={order:'ti-package',promo:'ti-speakerphone',alert:'ti-alert-triangle'}; const cls={order:'ni-order',promo:'ni-promo',alert:'ni-alert'}; document.getElementById('notif-log').innerHTML=notifLog.map(n=>'<div class="notif-item"><div class="notif-icon '+(cls[n.type]||'ni-order')+'"><i class="ti '+(icons[n.type]||'ti-bell')+'" style="font-size:15px"></i></div><div class="notif-content"><h4>'+n.title+'</h4><p>'+n.msg+'</p><p style="margin-top:3px;font-size:11px;color:var(--text3)">To: '+n.target+'</p></div><div class="notif-meta">'+n.time+'</div></div>').join(''); }
+function sendNotification(){ const title=document.getElementById('notif-title').value.trim(); const msg=document.getElementById('notif-msg').value.trim(); const target=document.getElementById('notif-target').value; if(!title||!msg){toast('Fill in title and message');return;} notifLog.unshift({type:'order',title,msg,time:'now',target}); renderNotifLog(); document.getElementById('notif-title').value=''; document.getElementById('notif-msg').value=''; toast('Notification sent!'); }
+// ─── SHARED MENU STORAGE (instantly reflects on customer app) ───
+const MENU_KEY = 'tildabite_menu';
+const DEFAULT_MENU = [
+  {id:1,name:'Chicken Dum Biryani',desc:'Slow-cooked basmati rice with tender chicken & secret spices',price:199,cat:'biryani',emoji:'🍛',veg:false,image:'',stock:null,oos:false,bestseller:true,sold:0,active:true},
+  {id:2,name:'Veg Biryani',desc:'Fragrant basmati with mixed vegetables & caramelised onions',price:149,cat:'biryani',emoji:'🫕',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:3,name:'Mutton Biryani',desc:'Premium mutton slow-cooked in a sealed handi for 3 hours',price:249,cat:'biryani',emoji:'🍛',veg:false,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:4,name:'Chicken Masala & Roti Box',desc:'Thick chicken curry with 4 hot rotis & pickle',price:179,cat:'chicken',emoji:'🍗',veg:false,image:'',stock:null,oos:false,bestseller:true,sold:0,active:true},
+  {id:5,name:'Butter Chicken Box',desc:'Creamy tomato-based curry with tandoori chicken pieces',price:189,cat:'chicken',emoji:'🍗',veg:false,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:6,name:'Chhole Bhature',desc:'Punjabi chhole with 2 fluffy bhaturas & onion rings',price:129,cat:'veg',emoji:'🫘',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:7,name:'Paneer Tikka Box',desc:'Smoky marinated paneer with mint chutney & roti',price:159,cat:'veg',emoji:'🧀',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:8,name:'Burger (Veg)',desc:'Crispy aloo tikki burger with chipotle mayo & fresh veggies',price:89,cat:'snacks',emoji:'🍔',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:9,name:'Cold Coffee',desc:'Rich cold brew with milk & vanilla ice cream',price:79,cat:'drinks',emoji:'☕',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+  {id:10,name:'Mojito (Mint)',desc:'Fresh mint, lime & soda – refreshingly light',price:69,cat:'drinks',emoji:'🍹',veg:true,image:'',stock:null,oos:false,bestseller:false,sold:0,active:true},
+];
+let MENU_ITEMS = [];
+let editingMenuId = null;
 
-async function confirmAssign(){
-  const sel=document.getElementById('rider-select');
-  if(!sel.value){ toast('Select a rider first'); return; }
-  const riderId=sel.value;
-  const riderName=sel.options[sel.selectedIndex].text.split(' (')[0];
-  const otp=String(Math.floor(1000+Math.random()*9000));
-
-  const { error } = await sb.from('orders').update({
-    rider_id:     riderId,
-    rider_name:   riderName,
-    status:       'otw',
-    delivery_otp: otp
-  }).eq('id', assigningOrder);
-
-  if(error){ toast('❌ '+error.message); return; }
-
-  toast(`Rider assigned! OTP: ${otp}`);
-  closeModal();
-  adminRefreshOrders();
+function loadMenu(){
+  try { const raw = JSON.parse(localStorage.getItem(MENU_KEY)||'null'); if(Array.isArray(raw)&&raw.length){ MENU_ITEMS = raw; return; } } catch(e){}
+  MENU_ITEMS = JSON.parse(JSON.stringify(DEFAULT_MENU));
+  saveMenu();
 }
+function saveMenu(){ localStorage.setItem(MENU_KEY, JSON.stringify(MENU_ITEMS)); }
 
-// ── RIDERS ───────────────────────────────────────────────────
-async function adminLoadRiders(){
-  const { data, error } = await sb.from('riders').select('*').order('name');
-  if(error){ console.error(error); return; }
-  RIDERS=data; renderRiders();
-}
-
-function renderRiders(){
-  const activeOrders=ORDERS.filter(o=>o.status==='otw');
-  document.getElementById('riders-grid').innerHTML=RIDERS.map(r=>{
-    const cnt=activeOrders.filter(o=>o.rider_id===r.id).length;
-    const initials=r.initials||r.name.split(' ').map(w=>w[0]).join('').toUpperCase();
-    return `<div class="rider-card">
-      <div class="rider-avatar">${initials}</div>
-      <div class="rider-name">${r.name}</div>
-      <div class="rider-phone"><i class="ti ti-phone" style="font-size:12px;margin-right:4px"></i>${r.phone}</div>
-      <div class="rider-stats">
-        <div class="r-stat"><div class="r-stat-val">${r.total_deliveries||0}</div><div class="r-stat-label">Deliveries</div></div>
-        <div class="r-stat"><div class="r-stat-val">${r.rating||4.5}</div><div class="r-stat-label">Rating</div></div>
-        <div class="r-stat"><div class="r-stat-val">${cnt}</div><div class="r-stat-label">Active</div></div>
-      </div>
-      <span class="rider-status ${cnt>0?'r-busy':'r-available'}"><i class="ti ti-circle-filled" style="font-size:8px"></i>${cnt>0?cnt+' order'+(cnt>1?'s':'')+' in progress':'No active orders'}</span>
-    </div>`;
-  }).join('');
-}
-
-// ── STATS ─────────────────────────────────────────────────────
-function updateOverviewStats(){
-  const pending=ORDERS.filter(x=>x.status==='pending').length;
-  const revenue=ORDERS.filter(x=>x.status!=='cancelled').reduce((s,o)=>s+o.amount,0);
-  const activeRiders=[...new Set(ORDERS.filter(o=>o.status==='otw').map(o=>o.rider_id))].length;
-  document.getElementById('ov-pending').textContent=pending;
-  document.getElementById('ov-total').textContent=ORDERS.length;
-  document.getElementById('ov-revenue').textContent='₹'+revenue.toLocaleString('en-IN');
-  document.getElementById('ov-riders').textContent=activeRiders;
-  document.getElementById('pending-badge').textContent=pending;
-}
-
-// ── NOTIFICATIONS ─────────────────────────────────────────────
-async function sendNotification(){
-  const title=document.getElementById('notif-title').value.trim();
-  const msg=document.getElementById('notif-msg').value.trim();
-  const target=document.getElementById('notif-target').value;
-  if(!title||!msg){ toast('Fill in title and message'); return; }
-  const { error } = await sb.from('notifications').insert({ type:'order', title, message:msg, target });
-  if(error){ toast('❌ '+error.message); return; }
-  document.getElementById('notif-title').value='';
-  document.getElementById('notif-msg').value='';
-  toast('Notification sent!');
-  adminLoadNotifications();
-}
-
-async function adminLoadNotifications(){
-  const { data } = await sb.from('notifications').select('*').order('created_at',{ascending:false}).limit(20);
-  notifLog=(data||[]).map(n=>({type:n.type,title:n.title,msg:n.message,time:new Date(n.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),target:n.target}));
-  renderNotifLog();
-}
-
-function renderNotifLog(){
-  const icons={order:'ti-package',promo:'ti-speakerphone',alert:'ti-alert-triangle'};
-  const cls={order:'ni-order',promo:'ni-promo',alert:'ni-alert'};
-  document.getElementById('notif-log').innerHTML=notifLog.map(n=>`<div class="notif-item"><div class="notif-icon ${cls[n.type]||'ni-order'}"><i class="ti ${icons[n.type]||'ti-bell'}" style="font-size:15px"></i></div><div class="notif-content"><h4>${n.title}</h4><p>${n.msg}</p><p style="margin-top:3px;font-size:11px;color:var(--text3)">To: ${n.target}</p></div><div class="notif-meta">${n.time}</div></div>`).join('');
-}
-
-// ── MENU MANAGEMENT ───────────────────────────────────────────
-async function adminLoadMenuItems(){
-  const { data, error } = await sb.from('menu_items').select('*').order('id');
-  if(error){ console.error(error); return; }
-  MENU_ITEMS=data.map(m=>({
-    id:m.id, name:m.name, desc:m.description||'', price:m.price,
-    cat:m.category, emoji:m.emoji||'🍽️', veg:m.is_veg,
-    image:m.image_url||'', stock:m.stock_qty, oos:m.is_out_of_stock,
-    bestseller:m.is_bestseller, sold:m.sold_count||0, active:m.is_active
-  }));
-  renderMenuMgmt();
+// Auto-decrement stock based on placed orders so admin sees live availability
+function syncStockFromOrders(){
+  const orders = loadOrdersFromStore();
+  const processed = new Set(JSON.parse(localStorage.getItem('tildabite_menu_processed_orders')||'[]'));
+  let changed = false;
+  orders.forEach(o=>{
+    if(processed.has(o.id) || o.status==='cancelled') return;
+    (o.items||[]).forEach(line=>{
+      // line is "Item Name ×N"
+      const m = String(line).match(/^(.*) ×(\d+)$/);
+      if(!m) return;
+      const name = m[1], qty = parseInt(m[2]);
+      const item = MENU_ITEMS.find(x=>x.name===name);
+      if(!item) return;
+      item.sold = (item.sold||0) + qty;
+      if(typeof item.stock === 'number'){
+        item.stock = Math.max(0, item.stock - qty);
+        if(item.stock === 0) item.oos = true;
+      }
+      changed = true;
+    });
+    processed.add(o.id);
+  });
+  if(changed){ saveMenu(); localStorage.setItem('tildabite_menu_processed_orders', JSON.stringify([...processed])); }
 }
 
 function renderMenuMgmt(){
-  const q=(document.getElementById('mm-search')?.value||'').toLowerCase();
-  const list=MENU_ITEMS.filter(m=>!q||m.name.toLowerCase().includes(q)||m.cat.toLowerCase().includes(q));
-  const inStock=MENU_ITEMS.filter(m=>!m.oos&&m.active).length;
-  const fewLeft=MENU_ITEMS.filter(m=>!m.oos&&typeof m.stock==='number'&&m.stock>0&&m.stock<=5).length;
-  const oos=MENU_ITEMS.filter(m=>m.oos||(typeof m.stock==='number'&&m.stock===0)).length;
-  document.getElementById('mm-total').textContent=MENU_ITEMS.length;
-  document.getElementById('mm-instock').textContent=inStock;
-  document.getElementById('mm-fewleft').textContent=fewLeft;
-  document.getElementById('mm-oos').textContent=oos;
+  loadMenu(); syncStockFromOrders();
+  const q = (document.getElementById('mm-search')?.value||'').toLowerCase();
+  const list = MENU_ITEMS.filter(m => !q || m.name.toLowerCase().includes(q) || m.cat.toLowerCase().includes(q));
+  // stats
+  const inStock = MENU_ITEMS.filter(m=>!m.oos && m.active).length;
+  const fewLeft = MENU_ITEMS.filter(m=>!m.oos && typeof m.stock==='number' && m.stock>0 && m.stock<=5).length;
+  const oos     = MENU_ITEMS.filter(m=>m.oos || (typeof m.stock==='number' && m.stock===0)).length;
+  document.getElementById('mm-total').textContent = MENU_ITEMS.length;
+  document.getElementById('mm-instock').textContent = inStock;
+  document.getElementById('mm-fewleft').textContent = fewLeft;
+  document.getElementById('mm-oos').textContent = oos;
 
-  document.getElementById('menu-items-list').innerHTML=list.map(m=>{
-    const stockTxt=(typeof m.stock==='number')
-      ?(m.stock===0?'<span style="color:var(--red);font-weight:700">0 left</span>'
-        :m.stock<=5?'<span style="color:var(--amber);font-weight:700">Only '+m.stock+' left</span>'
-        :m.stock+' in stock')
-      :'<span style="color:var(--text3)">Unlimited</span>';
-    const sbadge=m.oos
-      ?'<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:var(--rbg);color:var(--red);border:1px solid var(--rborder)">OUT OF STOCK</span>'
-      :(typeof m.stock==='number'&&m.stock>0&&m.stock<=5)
-        ?'<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:var(--ambg);color:var(--amber);border:1px solid var(--amborder)">FEW LEFT</span>'
-        :'<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:var(--gbg);color:var(--green);border:1px solid var(--gborder)">AVAILABLE</span>';
-    const bestseller=m.bestseller?'<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(245,158,11,0.12);color:#b45309;border:1px solid rgba(245,158,11,0.3);margin-left:4px">⭐ BEST SELLER</span>':'';
-    const img=m.image?`<img src="${m.image}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--card)" onerror="this.style.display='none'">`:
-      `<div style="width:48px;height:48px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:26px">${m.emoji||'🍽️'}</div>`;
+  document.getElementById('menu-items-list').innerHTML = list.map(m=>{
+    const stockTxt = (typeof m.stock==='number')
+      ? (m.stock===0 ? '<span style="color:var(--red);font-weight:700">0 left</span>'
+        : m.stock<=5 ? '<span style="color:var(--amber);font-weight:700">Only '+m.stock+' left</span>'
+        : m.stock+' in stock')
+      : '<span style="color:var(--text3)">Unlimited</span>';
+    const statusBadge = m.oos
+      ? '<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:var(--rbg);color:var(--red);border:1px solid var(--rborder)">OUT OF STOCK</span>'
+      : (typeof m.stock==='number' && m.stock>0 && m.stock<=5)
+        ? '<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:var(--ambg);color:var(--amber);border:1px solid var(--amborder)">FEW LEFT</span>'
+        : '<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:var(--gbg);color:var(--green);border:1px solid var(--gborder)">AVAILABLE</span>';
+    const bestseller = m.bestseller ? '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(245,158,11,0.12);color:#b45309;border:1px solid rgba(245,158,11,0.3);margin-left:4px">⭐ BEST SELLER</span>' : '';
+    const img = m.image
+      ? `<img src="${m.image}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--card)">`
+      : `<div style="width:48px;height:48px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:26px">${m.emoji||'🍽️'}</div>`;
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border)">
       ${img}
       <div style="flex:1;min-width:0">
@@ -584,98 +499,88 @@ function renderMenuMgmt(){
       </div>
       <div style="font-size:12px;width:110px;text-align:right">${stockTxt}</div>
       <div style="font-size:13px;font-weight:800;color:var(--accent);width:60px;text-align:right">₹${m.price}</div>
-      <div style="width:120px;text-align:center">${sbadge}</div>
+      <div style="width:120px;text-align:center">${statusBadge}</div>
       <button class="tb-btn" onclick="openMenuEditor(${m.id})" style="padding:5px 12px;font-size:11px"><i class="ti ti-edit" style="font-size:12px"></i> Edit</button>
     </div>`;
-  }).join('')||'<div style="padding:30px;text-align:center;color:var(--text3);font-size:13px">No items match your search.</div>';
+  }).join('') || '<div style="padding:30px;text-align:center;color:var(--text3);font-size:13px">No items match your search.</div>';
 }
 
 function openMenuEditor(id){
-  editingMenuId=id;
-  const m=id?MENU_ITEMS.find(x=>x.id===id):{name:'',desc:'',price:'',cat:'biryani',emoji:'🍽️',veg:true,image:'',stock:null,oos:false,bestseller:false};
-  if(!m)return;
-  document.getElementById('menu-modal-title').textContent=id?'Edit menu item':'Add menu item';
-  document.getElementById('mm-name').value=m.name||'';
-  document.getElementById('mm-desc').value=m.desc||'';
-  document.getElementById('mm-price').value=m.price||'';
-  document.getElementById('mm-cat').value=m.cat||'biryani';
-  document.getElementById('mm-emoji').value=m.emoji||'';
-  document.getElementById('mm-veg').value=String(!!m.veg);
-  document.getElementById('mm-image').value=m.image||'';
-  document.getElementById('mm-stock').value=(typeof m.stock==='number')?m.stock:'';
-  document.getElementById('mm-oos-toggle').value=String(!!m.oos);
-  document.getElementById('mm-bestseller').checked=!!m.bestseller;
-  document.getElementById('mm-delete-btn').style.display=id?'inline-block':'none';
+  loadMenu();
+  editingMenuId = id;
+  const m = id ? MENU_ITEMS.find(x=>x.id===id) : {name:'',desc:'',price:'',cat:'biryani',emoji:'🍽️',veg:true,image:'',stock:'',oos:false,bestseller:false};
+  if(!m) return;
+  document.getElementById('menu-modal-title').textContent = id ? 'Edit menu item' : 'Add menu item';
+  document.getElementById('mm-name').value = m.name||'';
+  document.getElementById('mm-desc').value = m.desc||'';
+  document.getElementById('mm-price').value = m.price||'';
+  document.getElementById('mm-cat').value = m.cat||'biryani';
+  document.getElementById('mm-emoji').value = m.emoji||'';
+  document.getElementById('mm-veg').value = String(!!m.veg);
+  document.getElementById('mm-image').value = m.image||'';
+  document.getElementById('mm-stock').value = (typeof m.stock==='number') ? m.stock : '';
+  document.getElementById('mm-oos-toggle').value = String(!!m.oos);
+  document.getElementById('mm-bestseller').checked = !!m.bestseller;
+  document.getElementById('mm-delete-btn').style.display = id ? 'inline-block' : 'none';
   document.getElementById('menu-modal').classList.remove('hidden');
 }
-function closeMenuModal(){ document.getElementById('menu-modal').classList.add('hidden'); editingMenuId=null; }
+function closeMenuModal(){ document.getElementById('menu-modal').classList.add('hidden'); editingMenuId = null; }
 
-async function saveMenuItem(){
-  const name=document.getElementById('mm-name').value.trim();
-  const price=parseInt(document.getElementById('mm-price').value);
+function saveMenuItem(){
+  const name = document.getElementById('mm-name').value.trim();
+  const price = parseInt(document.getElementById('mm-price').value);
   if(!name){ toast('Item name is required'); return; }
-  if(isNaN(price)||price<0){ toast('Enter a valid price'); return; }
-  const stockRaw=document.getElementById('mm-stock').value.trim();
-  const stock_qty=stockRaw===''?null:Math.max(0,parseInt(stockRaw));
-  let is_out_of_stock=document.getElementById('mm-oos-toggle').value==='true';
-  if(stock_qty===0) is_out_of_stock=true;
-
-  const payload={
-    name,
-    description:document.getElementById('mm-desc').value.trim(),
-    price,
-    category:document.getElementById('mm-cat').value,
-    emoji:document.getElementById('mm-emoji').value.trim()||'🍽️',
-    is_veg:document.getElementById('mm-veg').value==='true',
-    image_url:document.getElementById('mm-image').value.trim(),
-    stock_qty, is_out_of_stock,
-    is_bestseller:document.getElementById('mm-bestseller').checked,
-    is_active:true
+  if(isNaN(price) || price<0){ toast('Enter a valid price'); return; }
+  const stockRaw = document.getElementById('mm-stock').value.trim();
+  const stock = stockRaw==='' ? null : Math.max(0, parseInt(stockRaw));
+  let oos = document.getElementById('mm-oos-toggle').value === 'true';
+  if(stock === 0) oos = true;
+  const payload = {
+    name, desc: document.getElementById('mm-desc').value.trim(),
+    price, cat: document.getElementById('mm-cat').value,
+    emoji: document.getElementById('mm-emoji').value.trim() || '🍽️',
+    veg: document.getElementById('mm-veg').value === 'true',
+    image: document.getElementById('mm-image').value.trim(),
+    stock, oos, bestseller: document.getElementById('mm-bestseller').checked,
+    active: true,
   };
-
-  let error;
+  loadMenu();
   if(editingMenuId){
-    ({error}=await sb.from('menu_items').update(payload).eq('id',editingMenuId));
-    if(!error) toast('Item updated — live on customer app ✓');
+    const i = MENU_ITEMS.findIndex(x=>x.id===editingMenuId);
+    if(i>-1) MENU_ITEMS[i] = { ...MENU_ITEMS[i], ...payload };
+    toast('Item updated — live on customer app ✓');
   } else {
-    ({error}=await sb.from('menu_items').insert(payload));
-    if(!error) toast('Item added — live on customer app ✓');
+    const newId = (MENU_ITEMS.reduce((a,m)=>Math.max(a,m.id),0)||0) + 1;
+    MENU_ITEMS.push({ id:newId, sold:0, ...payload });
+    toast('Item added — live on customer app ✓');
   }
-  if(error){ toast('❌ '+error.message); return; }
-  closeMenuModal();
-  adminLoadMenuItems();
+  saveMenu(); closeMenuModal(); renderMenuMgmt();
+}
+function deleteMenuItem(){
+  if(!editingMenuId) return;
+  if(!confirm('Delete this item? Customers will no longer see it.')) return;
+  loadMenu();
+  MENU_ITEMS = MENU_ITEMS.filter(x=>x.id!==editingMenuId);
+  saveMenu(); closeMenuModal(); renderMenuMgmt();
+  toast('Item deleted');
 }
 
-async function deleteMenuItem(){
-  if(!editingMenuId)return;
-  if(!confirm('Delete this item?'))return;
-  const {error}=await sb.from('menu_items').update({is_active:false}).eq('id',editingMenuId);
-  if(error){ toast('❌ '+error.message); return; }
-  toast('Item hidden from customers');
-  closeMenuModal(); adminLoadMenuItems();
-}
+// Cross-tab live sync — admin changes show on customer tab and vice versa
+window.addEventListener('storage', e => {
+  if(e.key === MENU_KEY) renderMenuMgmt();
+  if(e.key === 'tildabite_orders') adminRefreshOrders();
+});
 
-// ── REALTIME ──────────────────────────────────────────────────
-function adminSubscribeRealtime(){
-  sb.channel('admin-live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>{
-      adminRefreshOrders();
-    })
-    .on('postgres_changes',{event:'*',schema:'public',table:'menu_items'},()=>{
-      adminLoadMenuItems();
-    })
-    .subscribe();
-}
-
-// ── VIEW / NAV ─────────────────────────────────────────────────
 function showView(v,btn){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   const titles={overview:'Overview',orders:'All orders',riders:'Riders',notifications:'Notifications','menu-mgmt':'Menu management'};
   document.getElementById('page-title').textContent=titles[v]||v;
   if(btn){document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-  if(v==='notifications') adminLoadNotifications();
-  if(v==='riders') adminLoadRiders();
 }
+let tTimer;
+function toast(msg){ clearTimeout(tTimer); document.getElementById('tmsg').textContent=msg; document.getElementById('toast').classList.add('show'); tTimer=setTimeout(()=>document.getElementById('toast').classList.remove('show'),2400); }
+function toggleTheme(){ isDark=!isDark; document.body.classList.toggle('dark',isDark); document.getElementById('theme-icon').className=isDark?'ti ti-sun':'ti ti-moon'; }
+function updateOverviewStats(){ const pending=ORDERS.filter(x=>x.status==='pending').length; const total=ORDERS.length; const revenue=ORDERS.filter(x=>x.status!=='cancelled').reduce((s,o)=>s+o.amount,0); const activeRiders=RIDERS.filter(r=>r.orders>0).length; document.getElementById('ov-pending').textContent=pending; document.getElementById('ov-total').textContent=total; document.getElementById('ov-revenue').textContent='₹'+revenue.toLocaleString('en-IN'); document.getElementById('ov-riders').textContent=activeRiders; document.getElementById('pending-badge').textContent=pending; }
 </script>
 </html>
